@@ -28,7 +28,7 @@ def display_time_resolution_spectrum(timestamps):
     resolution_stdev = __gaussian_fit(timestamps)
     y_axis, x_axis = __create_histogram(timestamps)
     plt.clf()
-    plt.plot(x_axis[:-1], y_axis[:], 'ko', label="Original energy spectrum")
+    plt.plot(x_axis[:-1], y_axis[:], 'ko', label="Original time spectrum")
     plt.plot(x_axis[0:-1], utils.NormalFitFunc(x_axis[0:-1], *resolution_stdev), 'r-', label="Fitted gaussian")
     plt.show()
 

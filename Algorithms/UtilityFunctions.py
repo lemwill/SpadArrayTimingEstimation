@@ -5,7 +5,6 @@ import numpy as np
 from os import path
 from optparse import OptionParser
 
-import spad_data_import as ReadPhotons
 
 def NormalFitFunc(x, mean, variance, A):
     gain = 1 / (variance * np.sqrt(2*np.pi))
@@ -53,75 +52,6 @@ def progressbar(it, count = 0, stride = 0, prefix = "", size = 50):
     sys.stdout.write("%s [%s%s] %i/%i\r" % (prefix, "#"*size, "."*(0), count, count))
     #sys.stdout.write("\n")
     sys.stdout.flush()
-
-
-def ReformatDetect2000Data(Location, BaseName, BlockNumber, CutSize=1000):
-
-    Dim = {}
-    Dim['Dimx'] = 2020
-    Dim['Dimy'] = 2020
-    Dim['offsetX'] = 10
-    Dim['offsetY'] = 10
-
-    EventCounter = 0
-    Reformat = np.ndarray((0, 0))
-
-    ## Take a peak and see if there are types in the files for cherenkov
-    photons = ReadPhotons.dat2array(Dim, filenum=BlockNumber*CutSize, sourcedir=Location)
-    FieldCount = len(photons[0, :])
-    if(FieldCount > 6):
-        AddTypes = True
-        TotalElementCount = 2 + 128 + 128
-    else:
-        AddTypes = False
-        TotalElementCount = 2 + 128
-
-
-    for x in progressbar(range(0, CutSize), count=CutSize, stride=5, prefix = "Reformating block %d" % BlockNumber, size = 40):
-        photons = ReadPhotons.dat2array(Dim, filenum=x+BlockNumber*CutSize, sourcedir=Location)
-
-        ## check for empty events
-        if not photons.any():
-            continue
-        ## check for events with less than 2 photons as well
-        ## using the shape of the array (1D or 2D)
-        if( len(np.shape(photons)) < 2):
-            continue
-
-        # Remove photons who's angle is less than 0.75z
-        ## Sort array 
-        # ind_sort = np.argsort(photons[:, 5])
-        # photons = photons[ind_sort]
-        #
-        # Cutoff = np.where(photons[:, 5] > 0.75)
-        # photons = photons[Cutoff[0][0]:]
-
-        # Don't consider events with too little photons
-        if( len(photons[:, 0]) < 128):
-            continue
-
-        localArray = np.empty(TotalElementCount)
-
-        # keep only timestamps after rescaling to ps
-        photonTimestamps = photons[:, 0] * 1e3
-        ## Sort array using numpy, in order of timestamp
-        ind_sort = np.argsort(photonTimestamps)
-        photonTimestamps = photonTimestamps[ind_sort].astype(np.int)
-        localArray[0] = x+BlockNumber*CutSize
-        localArray[1] = len(photonTimestamps)
-        localArray[2:130] = photonTimestamps[0:128]
-
-        # Keep photon types handy
-        if(AddTypes):
-            photonTypes = photons[:, 6]
-            photonTypes = photonTypes[ind_sort].astype(np.int)
-            localArray[130:258] = photonTypes[0:128]
-
-        Reformat = np.append(Reformat, localArray)
-        EventCounter = EventCounter + 1
-
-    Reformat = Reformat.reshape((EventCounter, TotalElementCount)).astype(np.int)
-    np.save("%s_%03d" % (BaseName, BlockNumber), Reformat)
 
 
 def alt_3D(data, ndim = 2):
@@ -190,17 +120,25 @@ def basic_linear_regression(x, y):
 #print basic_linear_regression([47, 47, 47, 47], [1, 2, 3, 4])
 
 
+def main():
+    # read command line options
+    parser = OptionParser()
+    parser.add_option('-c', '--convert', dest='StartIndex', action='store', type=int, default='0')
+    parser.add_option('-n', '--name', dest='PrefixName', action='store', type=str, default='Prefix')
+    (opt, args) = parser.parse_args()
+
+    if not(opt.PrefixName == 'Prefix'):
+        ReformatDetect2000Data("./events", opt.PrefixName, opt.StartIndex, 1000)
+        print # for progress bar flush
+
+########################################################################################
+# Default call to main
+#
+########################################
+if __name__ == "__main__":
+    main()
 
 
-# read command line options
-parser = OptionParser()
-parser.add_option('-c', '--convert', dest='StartIndex', action='store', type=int, default='0')
-parser.add_option('-n', '--name', dest='PrefixName', action='store', type=str, default='Prefix')
-(opt, args) = parser.parse_args()
-
-if not(opt.PrefixName == 'Prefix'):
-    ReformatDetect2000Data("./events", opt.PrefixName, opt.StartIndex, 1000)
-    print # for progress bar flush
 
 
 
