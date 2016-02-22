@@ -107,7 +107,7 @@ class CEventCollection:
         self.__timestamps = self.__timestamps[:, 0:qty_photons_to_keep]
         self.__trigger_type = self.__trigger_type[:, 0:qty_photons_to_keep]
 
-        print("Events with unsufficent number of photons have been removed. There are {} events left".format( np.shape(self.__event_id)[0]))
+        print("Events with insufficent number of photons have been removed. There are {} events left".format( np.shape(self.__event_id)[0]))
 
 
     def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord):
