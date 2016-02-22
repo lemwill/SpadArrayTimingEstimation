@@ -13,7 +13,7 @@ def gaussian_fit(x, mean, variance, A):
 def fit_photopeak(event_collection, bins = 256):
 
     # Calculate the histogram with the quantity of spads triggered
-    energy_spectrum_y_axis, energy_spectrum_x_axis = np.histogram(event_collection.get_qty_spad_triggered(), bins=bins)
+    energy_spectrum_y_axis, energy_spectrum_x_axis = np.histogram(event_collection.qty_spad_triggered, bins=bins)
 
     # Find the approx position of the photopeak
     approx_photopeak_bin = np.where(energy_spectrum_y_axis == np.amax(energy_spectrum_y_axis))
@@ -46,7 +46,7 @@ def display_energy_spectrum(event_collection, histogram_bins_qty = 256):
     photopeak_mean, photopeak_sigma, photopeak_amplitude = fit_photopeak(event_collection, bins = histogram_bins_qty)
 
     x = np.linspace(0, 2000, 2000)
-    plt.hist(event_collection.get_qty_spad_triggered(), bins=histogram_bins_qty)
+    plt.hist(event_collection.qty_spad_triggered, bins=histogram_bins_qty)
     plt.plot(x, photopeak_amplitude*mlab.normpdf(x,photopeak_mean,photopeak_sigma))
 
     plt.show()
@@ -59,14 +59,15 @@ def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_k
     low_threshold_spad_triggered = ((low_threshold_kev / float(511.0) ) * photopeak_mean)
     high_threshold_spad_triggered = ((high_threshold_kev / float(511.0) ) * photopeak_mean)
 
-    low_values_indices = event_collection.get_qty_spad_triggered() < low_threshold_spad_triggered  # Where values are low
+    low_values_indices = event_collection.qty_spad_triggered < low_threshold_spad_triggered  # Where values are low
 
-    spad_triggered = event_collection.get_qty_spad_triggered()
+    spad_triggered = event_collection.qty_spad_triggered
     keep_list = (spad_triggered > low_threshold_spad_triggered) & (spad_triggered < high_threshold_spad_triggered)
 
 
     event_collection.delete_events(keep_list)
 
+    print("Events with over under {} kev or over {} kev have been removed. There are {} events left".format(low_threshold_kev, high_threshold_kev, event_collection.qty_of_events))
 
 
 class CEnergyDiscrimination:

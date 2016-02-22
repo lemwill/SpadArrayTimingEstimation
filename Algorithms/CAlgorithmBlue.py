@@ -2,7 +2,7 @@ import numpy as np
 from CTimingEstimationResult import CTimingEstimationResult
 from CAlgorithmBase import CAlgorithmBase
 
-class CAlgorithmMlh(CAlgorithmBase):
+class CAlgorithmBlue(CAlgorithmBase):
 
     def __init__(self, training_event_collection,  photon_count):
         self._mlh_coefficients = None
@@ -12,14 +12,14 @@ class CAlgorithmMlh(CAlgorithmBase):
 
     @property
     def algorithm_name(self):
-        return "MLH"
+        return "BLUE"
 
     @property
     def photon_count(self):
         return self.__photon_count
 
     def _calculate_coefficients(self):
-        covariance = np.cov(self._training_event_collection.get_timestamps()[:, :self.photon_count], rowvar=0)
+        covariance = np.cov(self._training_event_collection.timestamps[:, :self.photon_count], rowvar=0)
         unity = np.ones(self.photon_count)
         inverse_covariance = np.linalg.inv(covariance)
         w = np.dot(unity, inverse_covariance)
@@ -28,8 +28,8 @@ class CAlgorithmMlh(CAlgorithmBase):
 
     def evaluate_collection_timestamps(self, event_collection):
         current_mlh_length = len(self._mlh_coefficients)
-        timestamps = np.dot(event_collection.get_timestamps()[:, :current_mlh_length], self._mlh_coefficients)
-        timing_estimation_results = CTimingEstimationResult(self.algorithm_name, self.photon_count, timestamps, event_collection.get_interaction_time())
+        timestamps = np.dot(event_collection.timestamps[:, :current_mlh_length], self._mlh_coefficients)
+        timing_estimation_results = CTimingEstimationResult(self.algorithm_name, self.photon_count, timestamps, event_collection.interaction_time)
         return timing_estimation_results
 
     def evaluate_single_timestamp(self, single_event):
@@ -39,5 +39,5 @@ class CAlgorithmMlh(CAlgorithmBase):
         self._calculate_coefficients()
         print(self._mlh_coefficients)
 
-CAlgorithmBase.register(CAlgorithmMlh)
-assert issubclass(CAlgorithmMlh, CAlgorithmBase)
+CAlgorithmBase.register(CAlgorithmBlue)
+assert issubclass(CAlgorithmBlue, CAlgorithmBase)

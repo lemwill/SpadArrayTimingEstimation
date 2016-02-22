@@ -2,15 +2,34 @@ import numpy as np
 
 
 class CEventCollection:
+    type_invalid = 0
+    type_photon = 1
+    type_thermal_noise = 2
+    type_afterpulsing = 3
+    type_optical_crosstalk = 4
+    type_masked_photon = 5
+    type_dead_space_dropped = 6
+    type_failed_avalanche = 7
+    type_offset_is_cherenkov_based_results = 10
+    type_cherenkov_photon = 11
+    type_cherenkov_masked = 15
+    type_dead_space_dropped=16
 
-    def get_timestamps(self):
+    @property
+    def timestamps(self):
         return self.__timestamps
 
-    def get_interaction_time(self):
+    @property
+    def interaction_time(self):
         return self.__interaction_time
 
-    def get_qty_spad_triggered(self):
+    @property
+    def qty_spad_triggered(self):
         return self.__qty_spad_triggered
+
+    @property
+    def qty_of_events(self):
+        return np.shape(self.qty_spad_triggered)[0]
 
     def delete_events(self, events_to_keep_boolean):
         self.__event_id = self.__event_id[events_to_keep_boolean]
@@ -19,17 +38,56 @@ class CEventCollection:
         self.__qty_spad_triggered = self.__qty_spad_triggered[events_to_keep_boolean]
         self.__interaction_time = self.__interaction_time[events_to_keep_boolean]
 
-    def __remove_unwanted_photon_types(self, qty_photons_to_keep=63):
+    def __mask_photon_types(self, photon_type):
+        # Remove non valid photons
+        trigger_types_to_remove = self.__trigger_type == photon_type
+        self.__timestamps = np.ma.masked_where(trigger_types_to_remove, self.__timestamps)
+        self.__trigger_type = np.ma.masked_where(trigger_types_to_remove, self.__trigger_type)
+
+    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True, qty_photons_to_keep=63):
 
         # Grab the index of values 1, 5, 11 - true, masked and cerenkov
-        true_photon_type = 1
-        masked_photon_type = 5
-        cherenkov_photon = 11
 
-        # Photons types to keep
-        trigger_types_to_keep = np.logical_and(self.__trigger_type != true_photon_type, self.__trigger_type != cherenkov_photon)
-        self.__timestamps = np.ma.masked_where(trigger_types_to_keep, self.__timestamps)
-        self.__trigger_type = np.ma.masked_where(trigger_types_to_keep, self.__trigger_type)
+        # Type: 1 is photon
+        #       2
+        #       3
+        #       4
+        #       5 is masked photon
+        #       6 dead space dropped
+        #       7 failed avalanche
+        #       10 offset is cherenkov-based results
+        #       11 is cherenkov photon
+        #       15 is masked cherenkov photon
+        #       16 is dead space dropped cherenkov
+
+        type_invalid = 0
+        type_photon = 1
+        type_thermal_noise = 2
+        type_afterpulsing = 3
+        type_optical_crosstalk = 4
+        type_masked_photon = 5
+        type_dead_space_dropped = 6
+        type_failed_avalanche = 7
+        type_offset_is_cherenkov_based_results = 10
+        type_cherenkov_photon = 11
+        type_cherenkov_masked = 15
+        type_dead_space_dropped=16
+
+
+        self.__mask_photon_types(type_invalid)
+
+        if (remove_masked_photons == True):
+            self.__mask_photon_types(type_masked_photon)
+            self.__mask_photon_types(type_cherenkov_masked)
+
+        if(remove_thermal_noise == True):
+            self.__mask_photon_types(type_thermal_noise)
+
+        if(remove_after_pulsing == True):
+            self.__mask_photon_types(type_afterpulsing)
+
+        if(remove_crosstalk == True):
+            self.__mask_photon_types(type_optical_crosstalk)
 
         # Count the number of useful photons per event
         photon_count = np.ma.count(self.__timestamps, axis=1)
@@ -49,8 +107,7 @@ class CEventCollection:
         self.__timestamps = self.__timestamps[:, 0:qty_photons_to_keep]
         self.__trigger_type = self.__trigger_type[:, 0:qty_photons_to_keep]
 
-        print(self.__trigger_type)
-
+        print("Events with unsufficent number of photons have been removed. There are {} events left".format( np.shape(self.__event_id)[0]))
 
 
     def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord):
@@ -60,5 +117,4 @@ class CEventCollection:
         self.__timestamps = timestamps
         self.__qty_spad_triggered = qty_spad_triggered
         self.__interaction_time = np.zeros(timestamps.shape[0])
-
-        self.__remove_unwanted_photon_types()
+        print("Event collection created with: {} events.".format(self.qty_of_events) )

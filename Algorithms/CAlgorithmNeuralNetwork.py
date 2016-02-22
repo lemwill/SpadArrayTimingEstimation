@@ -25,13 +25,13 @@ class CAlgorithmNeuralNetwork(CAlgorithmBase):
 
     def evaluate_collection_timestamps(self, event_collection):
 
-        neural_input = event_collection.get_timestamps()[:, :self.photon_count - 1] \
-                       - event_collection.get_timestamps()[:, self.photon_count - 1:self.photon_count]
+        neural_input = event_collection.timestamps[:, :self.photon_count - 1] \
+                       - event_collection.timestamps[:, self.photon_count - 1:self.photon_count]
 
         timestamps = np.matrix(self.__neural_network.network.predict(neural_input) \
-                + event_collection.get_timestamps()[:, self.photon_count - 1:self.photon_count])
+                + event_collection.timestamps[:, self.photon_count - 1:self.photon_count])
 
-        timing_estimation_results = CTimingEstimationResult(self.algorithm_name, self.photon_count, timestamps, event_collection.get_interaction_time())
+        timing_estimation_results = CTimingEstimationResult(self.algorithm_name, self.photon_count, timestamps, event_collection.interaction_time)
         return timing_estimation_results
 
     def evaluate_single_timestamp(self, single_event):
@@ -70,9 +70,9 @@ class CAlgorithmNeuralNetwork(CAlgorithmBase):
 
         # climate.enable_default_logging()
 
-        neural_input = self.__event_collection.get_timestamps()[:, :self.photon_count - 1] \
-                       - self.__event_collection.get_timestamps()[:, self.photon_count - 1:self.photon_count]
-        neural_target = np.transpose(np.matrix(self.__event_collection.get_interaction_time().ravel()-self.__event_collection.get_timestamps()[:, self.photon_count - 1:self.photon_count].ravel()))
+        neural_input = self.__event_collection.timestamps[:, :self.photon_count - 1] \
+                       - self.__event_collection.timestamps[:, self.photon_count - 1:self.photon_count]
+        neural_target = np.transpose(np.matrix(self.__event_collection.interaction_time.ravel()-self.__event_collection.timestamps[:, self.photon_count - 1:self.photon_count].ravel()))
 
         self.__neural_network = theanets.Experiment(
             # Neural network for regression (sigmoid hidden, linear output)

@@ -20,11 +20,11 @@ class CTimingEstimationResult():
 
         coincidence_timestamps = statistics.generate_fake_coincidence(self.__interaction_timestamps_estimated)
 
-        resolution_stdev = statistics.get_stdev_from_gaussian_fit(self.__interaction_timestamps_error)
+        #resolution_stdev = statistics.get_stdev_from_gaussian_fit(self.__interaction_timestamps_error)
+        resolution_stdev = 0;
         resolution_fwhm = 2.35482*resolution_stdev
 
-        print "\rCnt = %6d,  %8s %2d        %3.3f %3.3f %3.3f %3.3f" % (self.__interaction_timestamps_estimated.shape[0],
-                                                                                   self.__algorithm_name, self.__photon_count,
+        print "\r%6s %2d - %3.3f %3.3f %3.3f %3.3f" % (        self.__algorithm_name, self.__photon_count,
                                                                     np.std(self.__interaction_timestamps_error, dtype=np.float64),
                                                                     np.std(coincidence_timestamps, dtype=np.float64),
                                                                     resolution_stdev,
