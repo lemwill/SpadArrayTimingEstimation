@@ -54,6 +54,8 @@ def display_energy_spectrum(event_collection, histogram_bins_qty = 256):
 
 def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_kev):
 
+    print "\n#### Applying energy discrimination ####"
+
     photopeak_mean, photopeak_sigma, photopeak_amplitude = fit_photopeak(event_collection)
 
     low_threshold_spad_triggered = ((low_threshold_kev / float(511.0) ) * photopeak_mean)
@@ -66,6 +68,7 @@ def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_k
 
 
     event_collection.delete_events(keep_list)
+
 
     print("Events with over under {} kev or over {} kev have been removed. There are {} events left".format(low_threshold_kev, high_threshold_kev, event_collection.qty_of_events))
 

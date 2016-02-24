@@ -19,6 +19,7 @@ class CEventCollection:
     def timestamps(self):
         return self.__timestamps
 
+
     @property
     def interaction_time(self):
         return self.__interaction_time
@@ -26,17 +27,31 @@ class CEventCollection:
     @property
     def qty_spad_triggered(self):
         return self.__qty_spad_triggered
+    @property
+    def trigger_type(self):
+        return self.__trigger_type
 
     @property
     def qty_of_events(self):
-        return np.shape(self.qty_spad_triggered)[0]
+        return np.shape(self.__timestamps)[0]
 
-    def delete_events(self, events_to_keep_boolean):
-        self.__event_id = self.__event_id[events_to_keep_boolean]
-        self.__timestamps = self.__timestamps[events_to_keep_boolean, :]
-        self.__trigger_type = self.__trigger_type[events_to_keep_boolean, :]
-        self.__qty_spad_triggered = self.__qty_spad_triggered[events_to_keep_boolean]
-        self.__interaction_time = self.__interaction_time[events_to_keep_boolean]
+    @property
+    def qty_of_photons(self):
+        return np.shape(self.__timestamps)[1]
+
+    def delete_events(self, events_to_delete_boolean):
+        self.__event_id = self.__event_id[events_to_delete_boolean]
+        self.__timestamps = self.__timestamps[events_to_delete_boolean, :]
+        self.__trigger_type = self.__trigger_type[events_to_delete_boolean, :]
+        self.__qty_spad_triggered = self.__qty_spad_triggered[events_to_delete_boolean]
+        self.__interaction_time = self.__interaction_time[events_to_delete_boolean]
+
+    def add_random_time_to_events(self, random_time):
+
+        self.interaction_time = random_time
+
+        random_offset = np.transpose(np.tile(random_time, (self.qty_of_photons, 1)))
+        self.__timestamps = self.__timestamps + random_offset
 
     def __mask_photon_types(self, photon_type):
         # Remove non valid photons
@@ -44,7 +59,29 @@ class CEventCollection:
         self.__timestamps = np.ma.masked_where(trigger_types_to_remove, self.__timestamps)
         self.__trigger_type = np.ma.masked_where(trigger_types_to_remove, self.__trigger_type)
 
-    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True, qty_photons_to_keep=63):
+    def remove_masked_photons(self, qty_photons_to_keep=96):
+
+        # Count the number of useful photons per event
+        photon_count = np.ma.count(self.__timestamps, axis=1)
+        keep_mask = (photon_count > qty_photons_to_keep)
+
+        # Delete the events without sufficient useful photons
+        self.delete_events(keep_mask)
+
+        # Rebuild the arrays without the masked photons
+        for i in range(0, self.__timestamps.shape[0]):
+            masked_timestamps = np.ma.MaskedArray.compressed(self.__timestamps[i, :])
+            masked_trigger_types = np.ma.MaskedArray.compressed(self.__trigger_type[i, :])
+            self.__timestamps[i, 0:qty_photons_to_keep] = masked_timestamps[0:qty_photons_to_keep]
+            self.__trigger_type[i, 0:qty_photons_to_keep] = masked_trigger_types[0:qty_photons_to_keep]
+
+
+        self.__timestamps = self.__timestamps[:, 0:qty_photons_to_keep]
+        self.__trigger_type = self.__trigger_type[:, 0:qty_photons_to_keep]
+
+        print("Events with insufficent number of photons have been removed. There are {} events left".format( np.shape(self.__event_id)[0]))
+
+    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True, qty_photons_to_keep=96):
 
         # Grab the index of values 1, 5, 11 - true, masked and cerenkov
 
@@ -89,25 +126,9 @@ class CEventCollection:
         if(remove_crosstalk == True):
             self.__mask_photon_types(type_optical_crosstalk)
 
-        # Count the number of useful photons per event
-        photon_count = np.ma.count(self.__timestamps, axis=1)
-        keep_mask = (photon_count > qty_photons_to_keep)
+        print "\n#### Removing unwanted photon types ####"
 
-        # Delete the events without sufficient useful photons
-        self.delete_events(keep_mask)
-
-        # Rebuild the arrays without the masked photons
-        for i in range(0, self.__timestamps.shape[0]):
-            masked_timestamps = np.ma.MaskedArray.compressed(self.__timestamps[i, :])
-            masked_trigger_types = np.ma.MaskedArray.compressed(self.__trigger_type[i, :])
-            self.__timestamps[i, 0:qty_photons_to_keep] = masked_timestamps[0:qty_photons_to_keep]
-            self.__trigger_type[i, 0:qty_photons_to_keep] = masked_trigger_types[0:qty_photons_to_keep]
-
-
-        self.__timestamps = self.__timestamps[:, 0:qty_photons_to_keep]
-        self.__trigger_type = self.__trigger_type[:, 0:qty_photons_to_keep]
-
-        print("Events with insufficent number of photons have been removed. There are {} events left".format( np.shape(self.__event_id)[0]))
+        self.remove_masked_photons(qty_photons_to_keep)
 
 
     def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord):

@@ -16,9 +16,11 @@ class CAlgorithmMean(CAlgorithmBase):
     def photon_count(self):
         return self.__photon_count
 
-    def evaluate_collection_timestamps(self, event_collection):
-        timestamps = np.mean(event_collection.timestamps[:, :self.photon_count], axis=1)
-        timing_estimation_results = CTimingEstimationResult(self.algorithm_name, self.photon_count, timestamps, event_collection.interaction_time)
+    def evaluate_collection_timestamps(self, coincidence_collection):
+        timestamps_detector1 = np.mean(coincidence_collection.detector1.timestamps[:, :self.photon_count], axis=1)
+        timestamps_detector2 = np.mean(coincidence_collection.detector2.timestamps[:, :self.photon_count], axis=1)
+
+        timing_estimation_results = CTimingEstimationResult(self.algorithm_name, self.photon_count, timestamps_detector1, timestamps_detector2)
         return timing_estimation_results
 
     def evaluate_single_timestamp(self, single_event):
