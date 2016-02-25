@@ -28,5 +28,6 @@ class CTimingEstimationResult():
 
         #resolution_stdev = statistics.get_stdev_from_gaussian_fit(self.__interaction_timestamps_estimated)
 
-
-        print "\r%6s %2d - %3.3f (stdev)" % (        self.__algorithm_name, self.__photon_count, np.std(self.__interaction_timestamps_estimated, dtype=np.float64))
+        timing_resolution_stdev = np.std(self.__interaction_timestamps_estimated, dtype=np.float64)
+        timing_resolution_fwhm = timing_resolution_stdev*2.355
+        print "\r%6s %2d - %3.3f (fwhm)" % (        self.__algorithm_name, self.__photon_count, timing_resolution_fwhm)

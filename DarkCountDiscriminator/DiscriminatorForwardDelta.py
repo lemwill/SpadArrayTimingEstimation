@@ -4,7 +4,7 @@ def DiscriminatorForwardDelta(event_collection, qty_photons_to_keep):
 
     for events in xrange(event_collection.timestamps.shape[0]):
         for photons in xrange(event_collection.timestamps.shape[1]-1):
-            if ((event_collection.timestamps[events, photons+15] - event_collection.timestamps[events, photons]) > 1500):
+            if ((event_collection.timestamps[events, photons+1] - event_collection.timestamps[events, photons]) > 300):
                 event_collection.timestamps[events, photons] = np.ma.masked
             else:
                 break
