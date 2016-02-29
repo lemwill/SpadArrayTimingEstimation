@@ -3,7 +3,7 @@ import numpy as np
 def DiscriminatorWindowDensity(event_collection, qty_photons_to_keep):
 
     for events in xrange(event_collection.timestamps.shape[0]):
-        for photons in xrange(event_collection.timestamps.shape[1]-1):
+        for photons in xrange(event_collection.timestamps.shape[1]-5):
             if ((event_collection.timestamps[events, photons+5] - event_collection.timestamps[events, photons]) > 400):
                 event_collection.timestamps[events, photons] = np.ma.masked
             else:

@@ -19,7 +19,6 @@ class CEventCollection:
     def timestamps(self):
         return self.__timestamps
 
-
     @property
     def interaction_time(self):
         return self.__interaction_time
@@ -39,12 +38,22 @@ class CEventCollection:
     def qty_of_photons(self):
         return np.shape(self.__timestamps)[1]
 
+    @property
+    def pixel_x_coord(self):
+        return self.__pixel_x_coord
+
+    @property
+    def pixel_y_coord(self):
+        return self.__pixel_y_coord
+
     def delete_events(self, events_to_delete_boolean):
         self.__event_id = self.__event_id[events_to_delete_boolean]
         self.__timestamps = self.__timestamps[events_to_delete_boolean, :]
         self.__trigger_type = self.__trigger_type[events_to_delete_boolean, :]
         self.__qty_spad_triggered = self.__qty_spad_triggered[events_to_delete_boolean]
         self.__interaction_time = self.__interaction_time[events_to_delete_boolean]
+        self.__pixel_x_coord = self.__pixel_x_coord[events_to_delete_boolean, :]
+        self.__pixel_y_coord = self.__pixel_y_coord[events_to_delete_boolean, :]
 
     def add_random_time_to_events(self, random_time):
 
@@ -58,6 +67,9 @@ class CEventCollection:
         trigger_types_to_remove = self.__trigger_type == photon_type
         self.__timestamps = np.ma.masked_where(trigger_types_to_remove, self.__timestamps)
         self.__trigger_type = np.ma.masked_where(trigger_types_to_remove, self.__trigger_type)
+        self.__pixel_x_coord = np.ma.masked_where(trigger_types_to_remove, self.__pixel_x_coord)
+        self.__pixel_y_coord = np.ma.masked_where(trigger_types_to_remove, self.__pixel_y_coord)
+
 
     def remove_masked_photons(self, qty_photons_to_keep=96):
 
@@ -72,12 +84,19 @@ class CEventCollection:
         for i in range(0, self.__timestamps.shape[0]):
             masked_timestamps = np.ma.MaskedArray.compressed(self.__timestamps[i, :])
             masked_trigger_types = np.ma.MaskedArray.compressed(self.__trigger_type[i, :])
+            masked_pixel_x_coord = np.ma.MaskedArray.compressed(self.__pixel_x_coord[i, :])
+            masked_pixel_y_coord = np.ma.MaskedArray.compressed(self.__pixel_y_coord[i, :])
+
             self.__timestamps[i, 0:qty_photons_to_keep] = masked_timestamps[0:qty_photons_to_keep]
             self.__trigger_type[i, 0:qty_photons_to_keep] = masked_trigger_types[0:qty_photons_to_keep]
+            self.__pixel_x_coord[i, 0:qty_photons_to_keep] = masked_pixel_x_coord[0:qty_photons_to_keep]
+            self.__pixel_y_coord[i, 0:qty_photons_to_keep] = masked_pixel_y_coord[0:qty_photons_to_keep]
 
 
         self.__timestamps = self.__timestamps[:, 0:qty_photons_to_keep]
         self.__trigger_type = self.__trigger_type[:, 0:qty_photons_to_keep]
+        self.__pixel_x_coord = self.__pixel_x_coord[:, 0:qty_photons_to_keep]
+        self.__pixel_y_coord = self.__pixel_y_coord[:, 0:qty_photons_to_keep]
 
         print("Events with insufficent number of photons have been removed. There are {} events left".format( np.shape(self.__event_id)[0]))
 
@@ -130,6 +149,25 @@ class CEventCollection:
 
         self.remove_masked_photons(qty_photons_to_keep)
 
+    def apply_tdc_sharing(self, pixels_per_tdc_x = 1, pixels_per_tdc_y=1):
+
+        address = (self.pixel_x_coord+1)/pixels_per_tdc_x*21 + (self.pixel_y_coord+1)/pixels_per_tdc_y
+
+
+
+
+        m = np.zeros_like(address, dtype=bool)
+
+        for events in xrange(self.timestamps.shape[0]):
+            m[events, np.unique(address[events,:], return_index=True)[1]] = True
+
+
+        self.__timestamps = np.ma.masked_where(m==False, self.timestamps)
+
+        self.remove_masked_photons(qty_photons_to_keep=8)
+
+
+
 
     def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord):
 
@@ -138,4 +176,6 @@ class CEventCollection:
         self.__timestamps = timestamps
         self.__qty_spad_triggered = qty_spad_triggered
         self.__interaction_time = np.zeros(timestamps.shape[0])
+        self.__pixel_x_coord = pixel_x_coord
+        self.__pixel_y_coord = pixel_y_coord
         print("Event collection created with: {} events.".format(self.qty_of_events) )

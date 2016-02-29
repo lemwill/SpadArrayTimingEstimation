@@ -17,6 +17,8 @@ from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
 
 # Distriminators
 from DarkCountDiscriminator import DiscriminatorDualWindow
+from DarkCountDiscriminator import DiscriminatorForwardDelta
+from DarkCountDiscriminator import DiscriminatorWindowDensity
 
 def run_timing_algorithm(algorithm, event_collection):
 
@@ -34,16 +36,22 @@ def main_loop():
     args = parser.parse_args()
 
     # File import --------------------------------------------------------------------------------------------------
-    event_collection = CImporterEventsDualEnergy.import_data(args.filename)
+    event_collection = CImporterEventsDualEnergy.import_data(args.filename,10000)
 
     # Energy discrimination ----------------------------------------------------------------------------------------
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)
 
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True, qty_photons_to_keep=67)
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True, qty_photons_to_keep=90)
+
+    # Sharing of TDCs --------------------------------------------------------------------------------------------------
+    #event_collection.apply_tdc_sharing( pixels_per_tdc_x = 4, pixels_per_tdc_y=4)
 
     # First photon discriminator -----------------------------------------------------------------------------------
-    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection, qty_photons_to_keep=61)
+
+    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection, qty_photons_to_keep=16)
+    #DiscriminatorWindowDensity.DiscriminatorWindowDensity(event_collection, qty_photons_to_keep=9)
+    #DiscriminatorForwardDelta.DiscriminatorForwardDelta(event_collection, qty_photons_to_keep=3)
 
     # Making of coincidences ---------------------------------------------------------------------------------------
     coincidence_collection = CCoincidenceCollection(event_collection)
@@ -56,11 +64,11 @@ def main_loop():
 
     print "\n### Calculating time resolution for different algorithms ###"
     # Running timing algorithms ------------------------------------------------------------------------------------
-    for i in range(1, 16):
+    for i in range(1, 7):
         algorithm = CAlgorithmSinglePhoton(photon_count=i)
         run_timing_algorithm(algorithm, coincidence_collection)
 
-    for i in range(2, 16):
+    for i in range(2, 7):
         algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
         run_timing_algorithm(algorithm, coincidence_collection)
 
