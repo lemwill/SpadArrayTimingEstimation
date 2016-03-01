@@ -2,7 +2,7 @@ import numpy as np
 from CTimingEstimationResult import CTimingEstimationResult
 from CAlgorithmBase import CAlgorithmBase
 
-class CAlgorithmBlueDifferential(CAlgorithmBase):
+class CAlgorithmBlueExpectationMaximisation(CAlgorithmBase):
 
     def __init__(self, coincidence_collection,  photon_count):
         self._mlh_coefficients = None
@@ -12,20 +12,48 @@ class CAlgorithmBlueDifferential(CAlgorithmBase):
 
     @property
     def algorithm_name(self):
-        return "BLUE DIFF"
+        return "BLUE EM"
 
     @property
     def photon_count(self):
         return self.__photon_count
 
     def _calculate_coefficients(self):
-        corrected_timestamps = self._training_coincidence_collection.detector1.timestamps[:, :self.photon_count] - self._training_coincidence_collection.detector2.timestamps[:, :self.photon_count]
+
+        # Moyenne
+        self._mlh_coefficients = np.zeros(self.photon_count)
+        self._mlh_coefficients.fill(1/float(self.photon_count))
+        current_mlh_length = len(self._mlh_coefficients)
+
+        # Calcul des timestamps avec le detecteur 1
+        timestamps_detector1 = np.dot(self._training_coincidence_collection.detector1.timestamps[:, :current_mlh_length], self._mlh_coefficients)
+
+        # Calcul des coefficients pour le detecteur 2
+        corrected_timestamps = self._training_coincidence_collection.detector2.timestamps[:, :self.photon_count] - timestamps_detector1[:,None]
+
         covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
         unity = np.ones(self.photon_count)
         inverse_covariance = np.linalg.inv(covariance)
         w = np.dot(unity, inverse_covariance)
         n = np.dot(w, unity.T)
         self._mlh_coefficients = w / n
+
+
+        # Calcul des timestamps pour le detecteur2
+        timestamps_detector2 = np.dot(self._training_coincidence_collection.detector2.timestamps[:, :current_mlh_length], self._mlh_coefficients)
+
+        # Calcul des coefficients pour le detecteur 1
+        corrected_timestamps = self._training_coincidence_collection.detector1.timestamps[:, :self.photon_count] - timestamps_detector2[:,None]
+
+        covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
+        unity = np.ones(self.photon_count)
+        inverse_covariance = np.linalg.inv(covariance)
+        w = np.dot(unity, inverse_covariance)
+        n = np.dot(w, unity.T)
+        self._mlh_coefficients = w / n
+
+
+
 
     def evaluate_collection_timestamps(self, coincidence_collection):
         current_mlh_length = len(self._mlh_coefficients)
@@ -42,5 +70,5 @@ class CAlgorithmBlueDifferential(CAlgorithmBase):
         self._calculate_coefficients()
         print(self._mlh_coefficients)
 
-CAlgorithmBase.register(CAlgorithmBlueDifferential)
-assert issubclass(CAlgorithmBlueDifferential, CAlgorithmBase)
+CAlgorithmBase.register(CAlgorithmBlueExpectationMaximisation)
+assert issubclass(CAlgorithmBlueExpectationMaximisation, CAlgorithmBase)
