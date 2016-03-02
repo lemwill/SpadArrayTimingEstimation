@@ -11,6 +11,9 @@ class CCoincidenceCollection:
         self.detector1.add_random_time_to_events(random_offset)
         self.detector2.add_random_time_to_events(random_offset)
 
+    def save_for_hardware_simulator(self):
+        #target = open("spad_fired.txt", 'w')
+        np.savetxt('test.txt', np.sort(self.detector1.timestamps.ravel()), fmt='%d', delimiter=' ')   # X is an array
 
     def __init__(self, event_collection):
 

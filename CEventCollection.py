@@ -1,5 +1,5 @@
 import numpy as np
-
+import os
 
 class CEventCollection:
     type_invalid = 0
@@ -70,6 +70,11 @@ class CEventCollection:
         self.__pixel_x_coord = np.ma.masked_where(trigger_types_to_remove, self.__pixel_x_coord)
         self.__pixel_y_coord = np.ma.masked_where(trigger_types_to_remove, self.__pixel_y_coord)
 
+    def save_for_hardware_simulator(self):
+        address = (self.pixel_x_coord)*21 + (self.pixel_y_coord)
+
+        np.savetxt('spad_fired_single_event.txt', np.transpose((self.timestamps[0, :], address[0,:])), fmt='%d ps %d')   # X is an array
+
 
     def remove_masked_photons(self):
 
@@ -77,7 +82,7 @@ class CEventCollection:
         photon_count = np.ma.count(self.__timestamps, axis=1)
         qty_photons_to_keep = np.floor(np.average(photon_count) -2*np.std(photon_count))
 
-        keep_mask = (photon_count > qty_photons_to_keep)
+        keep_mask = (photon_count >= qty_photons_to_keep)
 
         # Delete the events without sufficient useful photons
         self.delete_events(keep_mask)

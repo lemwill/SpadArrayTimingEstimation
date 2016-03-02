@@ -38,16 +38,18 @@ def main_loop():
     args = parser.parse_args()
 
     # File import --------------------------------------------------------------------------------------------------
-    event_collection = CImporterEventsDualEnergy.import_data(args.filename)
+    event_collection = CImporterEventsDualEnergy.import_data(args.filename, 2000)
 
     # Energy discrimination ----------------------------------------------------------------------------------------
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)
 
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=False)
+
+    event_collection.save_for_hardware_simulator()
 
     # Sharing of TDCs --------------------------------------------------------------------------------------------------
-    event_collection.apply_tdc_sharing( pixels_per_tdc_x=7, pixels_per_tdc_y=7)
+    event_collection.apply_tdc_sharing( pixels_per_tdc_x=5, pixels_per_tdc_y=5)
 
     # First photon discriminator -----------------------------------------------------------------------------------
     DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
