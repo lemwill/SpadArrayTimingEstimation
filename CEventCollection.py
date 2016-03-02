@@ -138,4 +138,4 @@ class CEventCollection:
         self.__timestamps = timestamps
         self.__qty_spad_triggered = qty_spad_triggered
         self.__interaction_time = np.zeros(timestamps.shape[0])
-        print("Event collection created with: {} events.".format(self.qty_of_events) )
+        print("Event collection created with: {0} events.".format(self.qty_of_events) )
