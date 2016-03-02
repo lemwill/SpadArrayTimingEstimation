@@ -80,7 +80,7 @@ class CEventCollection:
 
         # Count the number of useful photons per event
         photon_count = np.ma.count(self.__timestamps, axis=1)
-        qty_photons_to_keep = np.floor(np.average(photon_count) -2*np.std(photon_count))
+        qty_photons_to_keep = int(np.floor(np.average(photon_count) -2*np.std(photon_count)))
 
         keep_mask = (photon_count >= qty_photons_to_keep)
 
@@ -105,7 +105,7 @@ class CEventCollection:
         self.__pixel_x_coord = self.__pixel_x_coord[:, 0:qty_photons_to_keep]
         self.__pixel_y_coord = self.__pixel_y_coord[:, 0:qty_photons_to_keep]
 
-        print("Events with less than {} photons have been removed. There are {} events left".format( qty_photons_to_keep, np.shape(self.__event_id)[0]))
+        print("Events with less than {0} photons have been removed. There are {1} events left".format( qty_photons_to_keep, np.shape(self.__event_id)[0]))
 
     def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True):
 
@@ -181,7 +181,6 @@ class CEventCollection:
         self.__timestamps = timestamps
         self.__qty_spad_triggered = qty_spad_triggered
         self.__interaction_time = np.zeros(timestamps.shape[0])
-
         self.__pixel_x_coord = pixel_x_coord
         self.__pixel_y_coord = pixel_y_coord
         print("Event collection created with: {0} events.".format(self.qty_of_events) )

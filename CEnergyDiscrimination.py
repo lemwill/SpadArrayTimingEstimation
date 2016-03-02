@@ -19,8 +19,8 @@ def fit_photopeak(event_collection, bins = 256):
     approx_photopeak_bin = np.where(energy_spectrum_y_axis == np.amax(energy_spectrum_y_axis))
 
     ## Set region around the photopeak
-    GaussLowerBound = approx_photopeak_bin[0][0]*0.80
-    GaussUpperBound = approx_photopeak_bin[0][0]*1.20
+    GaussLowerBound = int(approx_photopeak_bin[0][0]*0.80)
+    GaussUpperBound = int(approx_photopeak_bin[0][0]*1.20)
 
     if(GaussUpperBound > 255):
         GaussUpperBound = 254
@@ -70,7 +70,7 @@ def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_k
     event_collection.delete_events(keep_list)
 
 
-    print("Events with over under {} kev or over {} kev have been removed. There are {} events left".format(low_threshold_kev, high_threshold_kev, event_collection.qty_of_events))
+    print("Events with over under {0} kev or over {1} kev have been removed. There are {2} events left".format(low_threshold_kev, high_threshold_kev, event_collection.qty_of_events))
 
 
 class CEnergyDiscrimination:

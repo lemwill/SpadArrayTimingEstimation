@@ -14,7 +14,7 @@ from TimingAlgorithms.CAlgorithmBlueDifferential import CAlgorithmBlueDifferenti
 from TimingAlgorithms.CAlgorithmBlueExpectationMaximisation import CAlgorithmBlueExpectationMaximisation
 
 from TimingAlgorithms.CAlgorithmMean import CAlgorithmMean
-from TimingAlgorithms.CAlgorithmNeuralNetwork import CAlgorithmNeuralNetwork
+# from TimingAlgorithms.CAlgorithmNeuralNetwork import CAlgorithmNeuralNetwork
 from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
 
 # Distriminators
