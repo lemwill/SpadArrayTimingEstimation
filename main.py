@@ -44,13 +44,13 @@ def main_loop():
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)
 
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True, qty_photons_to_keep=90)
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
 
     # Sharing of TDCs --------------------------------------------------------------------------------------------------
-    #event_collection.apply_tdc_sharing( pixels_per_tdc_x = 1, pixels_per_tdc_y=1)
+    event_collection.apply_tdc_sharing( pixels_per_tdc_x=7, pixels_per_tdc_y=7)
 
     # First photon discriminator -----------------------------------------------------------------------------------
-    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection, qty_photons_to_keep=65)
+    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
     #DiscriminatorWindowDensity.DiscriminatorWindowDensity(event_collection, qty_photons_to_keep=9)
     #DiscriminatorForwardDelta.DiscriminatorForwardDelta(event_collection, qty_photons_to_keep=3)
 
@@ -62,24 +62,28 @@ def main_loop():
     tdc.get_sampled_timestamps(coincidence_collection.detector1)
     tdc.get_sampled_timestamps(coincidence_collection.detector2)
 
+    max_order = 8
+
+    if(max_order > event_collection.qty_of_photons):
+        max_order = event_collection.qty_of_photons
 
     print "\n### Calculating time resolution for different algorithms ###"
     # Running timing algorithms ------------------------------------------------------------------------------------
-    for i in range(1, 16):
+    for i in range(1, max_order):
         algorithm = CAlgorithmSinglePhoton(photon_count=i)
         run_timing_algorithm(algorithm, coincidence_collection)
 
-    for i in range(2, 16):
+    for i in range(2, max_order):
         algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i)
         run_timing_algorithm(algorithm, coincidence_collection)
 
-    for i in range(2, 16):
-        algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
-        run_timing_algorithm(algorithm, coincidence_collection)
+    #for i in range(2, max_order):
+     #   algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
+     #   run_timing_algorithm(algorithm, coincidence_collection)
 
-    for i in range(2, 16):
-        algorithm = CAlgorithmBlueDifferential(coincidence_collection, photon_count=i)
-        run_timing_algorithm(algorithm, coincidence_collection)
+    #for i in range(2, max_order):
+     #   algorithm = CAlgorithmBlueDifferential(coincidence_collection, photon_count=i)
+     #   run_timing_algorithm(algorithm, coincidence_collection)
 
     #for i in range(2, 16):
     #    algorithm = CAlgorithmMean(photon_count=i)

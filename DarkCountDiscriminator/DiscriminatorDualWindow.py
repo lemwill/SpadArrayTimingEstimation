@@ -1,6 +1,6 @@
 import numpy as np
 
-def DiscriminatorDualWindow(event_collection, qty_photons_to_keep):
+def DiscriminatorDualWindow(event_collection):
 
     for events in xrange(event_collection.timestamps.shape[0]):
         for photons in xrange(event_collection.timestamps.shape[1]-15):
@@ -19,5 +19,5 @@ def DiscriminatorDualWindow(event_collection, qty_photons_to_keep):
 
 
     print "\n### Removing dark count with Dual Window Discriminator ###"
-    event_collection.remove_masked_photons(qty_photons_to_keep=qty_photons_to_keep)
+    event_collection.remove_masked_photons()
 #    CEventCollection.qty_spad_triggered

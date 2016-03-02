@@ -71,10 +71,12 @@ class CEventCollection:
         self.__pixel_y_coord = np.ma.masked_where(trigger_types_to_remove, self.__pixel_y_coord)
 
 
-    def remove_masked_photons(self, qty_photons_to_keep=96):
+    def remove_masked_photons(self):
 
         # Count the number of useful photons per event
         photon_count = np.ma.count(self.__timestamps, axis=1)
+        qty_photons_to_keep = np.floor(np.average(photon_count) -2*np.std(photon_count))
+
         keep_mask = (photon_count > qty_photons_to_keep)
 
         # Delete the events without sufficient useful photons
@@ -98,9 +100,9 @@ class CEventCollection:
         self.__pixel_x_coord = self.__pixel_x_coord[:, 0:qty_photons_to_keep]
         self.__pixel_y_coord = self.__pixel_y_coord[:, 0:qty_photons_to_keep]
 
-        print("Events with insufficent number of photons have been removed. There are {} events left".format( np.shape(self.__event_id)[0]))
+        print("Events with less than {} photons have been removed. There are {} events left".format( qty_photons_to_keep, np.shape(self.__event_id)[0]))
 
-    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True, qty_photons_to_keep=96):
+    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True):
 
         # Grab the index of values 1, 5, 11 - true, masked and cerenkov
 
@@ -147,14 +149,12 @@ class CEventCollection:
 
         print "\n#### Removing unwanted photon types ####"
 
-        self.remove_masked_photons(qty_photons_to_keep)
+        self.remove_masked_photons()
 
     def apply_tdc_sharing(self, pixels_per_tdc_x = 1, pixels_per_tdc_y=1):
 
+        print("\n#### Sharing TDCs ####")
         address = (self.pixel_x_coord+1)/pixels_per_tdc_x*21 + (self.pixel_y_coord+1)/pixels_per_tdc_y
-
-
-
 
         m = np.zeros_like(address, dtype=bool)
 
@@ -164,7 +164,7 @@ class CEventCollection:
 
         self.__timestamps = np.ma.masked_where(m==False, self.timestamps)
 
-        self.remove_masked_photons(qty_photons_to_keep=8)
+        self.remove_masked_photons()
 
 
 
