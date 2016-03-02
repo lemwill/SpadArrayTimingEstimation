@@ -7,7 +7,7 @@ def import_data(filename, event_count=0):
 
     # read file
     if path.isfile(filename):
-        imported_data = ImporterUtilities.load_big_file_int(filename, event_count)
+        imported_data = ImporterUtilities.load_big_file_float(filename, event_count)
     else:
         raise(NameError, 'Cannot find pre-processed timestamp table : %s\n' % (filename))
 
