@@ -29,8 +29,39 @@ def run_timing_algorithm(algorithm, event_collection):
     results.print_results()
     return results.fetch_fwhm_time_resolution()
 
+def collection_procedure(filename):
+    # File import -----------------------------------------------------------
+    event_collection = CImporterEventsDualEnergy.import_data(filename, 0)
+
+    # Energy discrimination -------------------------------------------------
+    CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425,
+                                                 high_threshold_kev=700)
+
+    # Filtering of unwanted photon types ------------------------------------
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False,
+                                                  remove_crosstalk=False, remove_masked_photons=True)
+
+    event_collection.save_for_hardware_simulator()
+
+    # Sharing of TDCs --------------------------------------------------------
+    event_collection.apply_tdc_sharing(pixels_per_tdc_x=1, pixels_per_tdc_y=1)
+
+    # First photon discriminator ---------------------------------------------
+    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
+
+    # Making of coincidences -------------------------------------------------
+    coincidence_collection = CCoincidenceCollection(event_collection)
+
+    # Apply TDC - Must be applied after making the coincidences because the
+    # coincidence adds a random time offset to pairs of events
+    tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=10, tdc_jitter_std=25)
+    tdc.get_sampled_timestamps(coincidence_collection.detector1)
+    tdc.get_sampled_timestamps(coincidence_collection.detector2)
+
+    return event_collection, coincidence_collection
+
 def main_loop():
-    
+
     matplotlib.rc('xtick', labelsize=18)
     matplotlib.rc('ytick', labelsize=18)
     matplotlib.rc('legend', fontsize=16)
@@ -53,32 +84,8 @@ def main_loop():
         for j, pitch in enumerate(pitches):
             # File import -----------------------------------------------------------
             filename = "/home/cora2406/SimResults/MultiTsStudy_P{0}_M02LN_11{1}LYSO_OB3.sim".format(pitch, crystal)
-            event_collection = CImporterEventsDualEnergy.import_data(filename, 0)
 
-            # Energy discrimination -------------------------------------------------
-            CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425,
-                                                         high_threshold_kev=700)
-
-            # Filtering of unwanted photon types ------------------------------------
-            event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False,
-                                                          remove_crosstalk=False, remove_masked_photons=True)
-
-            event_collection.save_for_hardware_simulator()
-
-            # Sharing of TDCs --------------------------------------------------------
-            event_collection.apply_tdc_sharing(pixels_per_tdc_x=1, pixels_per_tdc_y=1)
-
-            # First photon discriminator ---------------------------------------------
-            DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
-
-            # Making of coincidences -------------------------------------------------
-            coincidence_collection = CCoincidenceCollection(event_collection)
-
-            # Apply TDC - Must be applied after making the coincidences because the
-            # coincidence adds a random time offset to pairs of events
-            tdc = CTdc(system_clock_period_ps=4000, tdc_bin_width_ps=10, tdc_jitter_std=10)
-            tdc.get_sampled_timestamps(coincidence_collection.detector1)
-            tdc.get_sampled_timestamps(coincidence_collection.detector2)
+            event_collection, coincidence_collection = collection_procedure(filename)
 
             max_single_photon = 8
             max_BLUE = 10
