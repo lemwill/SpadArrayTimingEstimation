@@ -38,7 +38,7 @@ def main_loop():
     args = parser.parse_args()
 
     # File import --------------------------------------------------------------------------------------------------
-    event_collection = CImporterEventsDualEnergy.import_data(args.filename, 2000)
+    event_collection = CImporterEventsDualEnergy.import_data(args.filename, 0)
 
     # Energy discrimination ----------------------------------------------------------------------------------------
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)

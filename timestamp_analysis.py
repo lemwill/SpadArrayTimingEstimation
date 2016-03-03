@@ -2,6 +2,7 @@
 from CCoincidenceCollection import  CCoincidenceCollection
 import CEnergyDiscrimination
 from CTdc import CTdc
+import numpy as np
 
 ## Importers
 from Importer import CImporterEventsDualEnergy
@@ -20,7 +21,7 @@ def run_timing_algorithm(algorithm, event_collection):
 
     # Print the report
     results.print_results()
-    return results.fetch_timestamps
+    return results.fetch_fwhm_time_resolution()
 
 def main_loop():
 
@@ -28,6 +29,12 @@ def main_loop():
     crystals = [5, 10, 20]
     overbiases = [1, 3, 5]
     prompts = [0, 50, 125, 250, 500]
+
+    max_single_photon = 8
+    max_BLUE = 16
+
+    crystal_tr_sp_fwhm = np.zeros((len(crystals), len(pitches), max_single_photon))
+    crystal_tr_BLUE_fwhm = np.zeros((len(crystals), len(pitches), max_BLUE))
 
     for i, crystal in enumerate(crystals):
         for j, pitch in enumerate(pitches):
@@ -67,16 +74,14 @@ def main_loop():
 
             print "\n### Calculating time resolution for different algorithms ###"
 
-            # Running timing algorithms ------------------------------------------------------------------------------------
+            # Running timing algorithms ------------------------------------------------
             for p in range(1, max_order):
                 algorithm = CAlgorithmSinglePhoton(photon_count=p)
-                TimeResolution = run_timing_algorithm(algorithm, coincidence_collection)
-                print(TimeResolution)
-
+                crystal_tr_sp_fwhm[i, j, p] = run_timing_algorithm(algorithm, coincidence_collection)
 
             for p in range(2, max_order):
                 algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=p)
-                run_timing_algorithm(algorithm, coincidence_collection)
+                crystal_tr_BLUE_fwhm[i, j, p] = run_timing_algorithm(algorithm, coincidence_collection)
 
 
 main_loop()
