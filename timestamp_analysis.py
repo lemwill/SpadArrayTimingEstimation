@@ -1,8 +1,14 @@
+# ! /usr/bin/env python
+# coding=utf-8
+__author__ = 'acorbeil'
+
 ## Utilities
 from CCoincidenceCollection import  CCoincidenceCollection
 import CEnergyDiscrimination
 from CTdc import CTdc
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 
 ## Importers
 from Importer import CImporterEventsDualEnergy
@@ -24,6 +30,14 @@ def run_timing_algorithm(algorithm, event_collection):
     return results.fetch_fwhm_time_resolution()
 
 def main_loop():
+    
+    matplotlib.rc('xtick', labelsize=18)
+    matplotlib.rc('ytick', labelsize=18)
+    matplotlib.rc('legend', fontsize=16)
+    font = {'family': 'normal',
+            'size': 18}
+
+    matplotlib.rc('font', **font)
 
     pitches = [25, 30, 40, 50, 60, 70, 80, 90, 100]
     crystals = [5, 10, 20]
@@ -31,10 +45,9 @@ def main_loop():
     prompts = [0, 50, 125, 250, 500]
 
     max_single_photon = 8
-    max_BLUE = 16
-
-    crystal_tr_sp_fwhm = np.zeros((len(crystals), len(pitches), max_single_photon))
-    crystal_tr_BLUE_fwhm = np.zeros((len(crystals), len(pitches), max_BLUE))
+    max_BLUE = 10
+    crystal_tr_sp_fwhm = np.zeros((len(pitches), len(crystals), max_single_photon-1))
+    crystal_tr_BLUE_fwhm = np.zeros((len(pitches), len(crystals), max_BLUE-2))
 
     for i, crystal in enumerate(crystals):
         for j, pitch in enumerate(pitches):
@@ -67,21 +80,46 @@ def main_loop():
             tdc.get_sampled_timestamps(coincidence_collection.detector1)
             tdc.get_sampled_timestamps(coincidence_collection.detector2)
 
-            max_order = 8
+            max_single_photon = 8
+            max_BLUE = 10
 
-            if(max_order > event_collection.qty_of_photons):
-                max_order = event_collection.qty_of_photons
+            if(max_single_photon > event_collection.qty_of_photons):
+                max_single_photon = event_collection.qty_of_photons
 
             print "\n### Calculating time resolution for different algorithms ###"
 
             # Running timing algorithms ------------------------------------------------
-            for p in range(1, max_order):
+            for p in range(1, max_single_photon):
                 algorithm = CAlgorithmSinglePhoton(photon_count=p)
-                crystal_tr_sp_fwhm[i, j, p] = run_timing_algorithm(algorithm, coincidence_collection)
+                crystal_tr_sp_fwhm[j, i, p-1] = run_timing_algorithm(algorithm, coincidence_collection)
 
-            for p in range(2, max_order):
+            if(max_BLUE > event_collection.qty_of_photons):
+                max_BLUE = event_collection.qty_of_photons
+
+            for p in range(2, max_BLUE):
                 algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=p)
-                crystal_tr_BLUE_fwhm[i, j, p] = run_timing_algorithm(algorithm, coincidence_collection)
+                crystal_tr_BLUE_fwhm[j, i, p-2] = run_timing_algorithm(algorithm, coincidence_collection)
+
+    #print(crystal_tr_BLUE_fwhm)
+    #print(crystal_tr_sp_fwhm)
+
+    np.save('TimeResolution_crystal', crystal_tr_BLUE_fwhm)
+    np.save('TimeResolution_crystal', crystal_tr_sp_fwhm)
+
+    plt.figure(1)
+    [a, b, c] = plt.plot(pitches, crystal_tr_sp_fwhm[:, :, 0], 'o', ls='-')
+    plt.legend([a, b, c], ['1x1x5', '1x1x10', '1x1x20'])
+    plt.xlabel(u'SPAD pitch (µm)')
+    plt.ylabel('Coincidence Time Resolution (ps FWHM)')
+    #plt.ylim([20, 300])
+
+    plt.figure(2)
+    [a, b, c] = plt.plot(pitches, crystal_tr_BLUE_fwhm[:, :, -1], 'o', ls='-')
+    plt.legend([a, b, c], ['1x1x5', '1x1x10', '1x1x20'])
+    plt.xlabel(u'SPAD pitch (µm)')
+    plt.ylabel('Coincidence Time Resolution (ps FWHM)')
+
+    plt.show()
 
 
 main_loop()
