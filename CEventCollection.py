@@ -46,6 +46,12 @@ class CEventCollection:
     def pixel_y_coord(self):
         return self.__pixel_y_coord
 
+    def get_energy_resolution(self):
+        return self._energy_resolution
+
+    def set_energy_resolution(self, energy_resolution):
+        self._energy_resolution = energy_resolution
+
     def delete_events(self, events_to_delete_boolean):
         self.__event_id = self.__event_id[events_to_delete_boolean]
         self.__timestamps = self.__timestamps[events_to_delete_boolean, :]
@@ -183,4 +189,5 @@ class CEventCollection:
         self.__interaction_time = np.zeros(timestamps.shape[0])
         self.__pixel_x_coord = pixel_x_coord
         self.__pixel_y_coord = pixel_y_coord
+        self._energy_resolution = 0
         print("Event collection created with: {0} events.".format(self.qty_of_events) )

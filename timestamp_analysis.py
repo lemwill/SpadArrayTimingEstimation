@@ -32,7 +32,8 @@ def run_timing_algorithm(algorithm, event_collection):
 def collection_procedure(filename):
     # File import -----------------------------------------------------------
     event_collection = CImporterEventsDualEnergy.import_data(filename, 0)
-
+    print("#### Opening file ####")
+    print(filename)
     # Energy discrimination -------------------------------------------------
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425,
                                                  high_threshold_kev=700)
@@ -73,12 +74,13 @@ def main_loop():
     pitches = [25, 30, 40, 50, 60, 70, 80, 90, 100]
     crystals = [5, 10, 20]
     overbiases = [1, 3, 5]
-    prompts = [0, 50, 125, 250, 500]
+    prompts = ['', '_50PP', '_125PP', '_250PP', '_500PP']
 
     max_single_photon = 8
     max_BLUE = 10
     crystal_tr_sp_fwhm = np.zeros((len(pitches), len(crystals), max_single_photon-1))
     crystal_tr_BLUE_fwhm = np.zeros((len(pitches), len(crystals), max_BLUE-2))
+    crystal_er = np.zeros((len(pitches), len(crystals)))
 
     for i, crystal in enumerate(crystals):
         for j, pitch in enumerate(pitches):
@@ -87,6 +89,7 @@ def main_loop():
 
             event_collection, coincidence_collection = collection_procedure(filename)
 
+            crystal_er[j, i] = event_collection.get_energy_resolution()
             max_single_photon = 8
             max_BLUE = 10
 
@@ -110,8 +113,8 @@ def main_loop():
     #print(crystal_tr_BLUE_fwhm)
     #print(crystal_tr_sp_fwhm)
 
-    np.save('TimeResolution_crystal', crystal_tr_BLUE_fwhm)
-    np.save('TimeResolution_crystal', crystal_tr_sp_fwhm)
+    np.save('TimeResolution_crystal_blue', crystal_tr_BLUE_fwhm)
+    np.save('TimeResolution_crystal_singlephoton', crystal_tr_sp_fwhm)
 
     plt.figure(1)
     [a, b, c] = plt.plot(pitches, crystal_tr_sp_fwhm[:, :, 0], 'o', ls='-')
@@ -123,6 +126,108 @@ def main_loop():
     plt.figure(2)
     [a, b, c] = plt.plot(pitches, crystal_tr_BLUE_fwhm[:, :, -1], 'o', ls='-')
     plt.legend([a, b, c], ['1x1x5', '1x1x10', '1x1x20'])
+    plt.xlabel(u'SPAD pitch (µm)')
+    plt.ylabel('Coincidence Time Resolution (ps FWHM)')
+
+    overbias_tr_sp_fwhm = np.zeros((len(pitches), len(crystals), max_single_photon-1))
+    overbias_tr_BLUE_fwhm = np.zeros((len(pitches), len(crystals), max_BLUE-2))
+    overbias_er = np.zeros((len(pitches), len(crystals)))
+
+    for i, overbias in enumerate(overbiases):
+        for j, pitch in enumerate(pitches):
+            # File import -----------------------------------------------------------
+            filename = "/home/cora2406/SimResults/MultiTsStudy_P{0}_M02LN_1110LYSO_OB{1}.sim".format(pitch, overbias)
+
+            event_collection, coincidence_collection = collection_procedure(filename)
+            overbias_er[j, i] = event_collection.get_energy_resolution()
+
+            max_single_photon = 8
+            max_BLUE = 10
+
+            if(max_single_photon > event_collection.qty_of_photons):
+                max_single_photon = event_collection.qty_of_photons
+
+            print "\n### Calculating time resolution for different algorithms ###"
+
+            # Running timing algorithms ------------------------------------------------
+            for p in range(1, max_single_photon):
+                algorithm = CAlgorithmSinglePhoton(photon_count=p)
+                overbias_tr_sp_fwhm[j, i, p-1] = run_timing_algorithm(algorithm, coincidence_collection)
+
+            if(max_BLUE > event_collection.qty_of_photons):
+                max_BLUE = event_collection.qty_of_photons
+
+            for p in range(2, max_BLUE):
+                algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=p)
+                overbias_tr_BLUE_fwhm[j, i, p-2] = run_timing_algorithm(algorithm, coincidence_collection)
+
+    # print(overbias_tr_BLUE_fwhm)
+    # print(overbias_tr_sp_fwhm)
+
+    np.save('TimeResolution_overbias_blue', overbias_tr_BLUE_fwhm)
+    np.save('TimeResolution_overbias_singlephoton', crystal_tr_sp_fwhm)
+
+    plt.figure(3)
+    [a, b, c] = plt.plot(pitches, overbias_tr_sp_fwhm[:, :, 0], 'o', ls='-')
+    plt.legend([a, b, c], ['1 V', '3 V', '5 V'])
+    plt.xlabel(u'SPAD pitch (µm)')
+    plt.ylabel('Coincidence Time Resolution (ps FWHM)')
+    #plt.ylim([20, 300])
+
+    plt.figure(4)
+    [a, b, c] = plt.plot(pitches, overbias_tr_BLUE_fwhm[:, :, -1], 'o', ls='-')
+    plt.legend([a, b, c], ['1 V', '3 V', '5 V'])
+    plt.xlabel(u'SPAD pitch (µm)')
+    plt.ylabel('Coincidence Time Resolution (ps FWHM)')
+
+    prompts_tr_sp_fwhm = np.zeros((len(pitches), len(prompts), max_single_photon-1))
+    prompts_tr_BLUE_fwhm = np.zeros((len(pitches), len(prompts), max_BLUE-2))
+    prompts_er = np.zeros((len(pitches), len(crystals)))
+
+    for i, prompt in enumerate(prompts):
+        for j, pitch in enumerate(pitches):
+            # File import -----------------------------------------------------------
+            filename = "/home/cora2406/SimResults/MultiTsStudy_P{0}_M02LN_1110LYSO{1}_OB3.sim".format(pitch, prompt)
+
+            event_collection, coincidence_collection = collection_procedure(filename)
+            prompts_er[j, i] = event_collection.get_energy_resolution()
+
+            max_single_photon = 8
+            max_BLUE = 10
+
+            if(max_single_photon > event_collection.qty_of_photons):
+                max_single_photon = event_collection.qty_of_photons
+
+            print "\n### Calculating time resolution for different algorithms ###"
+
+            # Running timing algorithms ------------------------------------------------
+            for p in range(1, max_single_photon):
+                algorithm = CAlgorithmSinglePhoton(photon_count=p)
+                prompts_tr_sp_fwhm[j, i, p-1] = run_timing_algorithm(algorithm, coincidence_collection)
+
+            if(max_BLUE > event_collection.qty_of_photons):
+                max_BLUE = event_collection.qty_of_photons
+
+            for p in range(2, max_BLUE):
+                algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=p)
+                prompts_tr_BLUE_fwhm[j, i, p-2] = run_timing_algorithm(algorithm, coincidence_collection)
+
+    # print(prompts_tr_BLUE_fwhm)
+    # print(prompts_tr_sp_fwhm)
+
+    np.save('TimeResolution_prompts_blue', prompts_tr_BLUE_fwhm)
+    np.save('TimeResolution_prompts_singlephoton', prompts_tr_sp_fwhm)
+
+    plt.figure(5)
+    [a, b, c, d, e] = plt.plot(pitches, prompts_tr_sp_fwhm[:, :, 0], 'o', ls='-')
+    plt.legend([a, b, c, d, e], ['0 PP', '50 PP', '125 PP', '250 PP', '500 PP'])
+    plt.xlabel(u'SPAD pitch (µm)')
+    plt.ylabel('Coincidence Time Resolution (ps FWHM)')
+    #plt.ylim([20, 300])
+
+    plt.figure(6)
+    [a, b, c, d, e] = plt.plot(pitches, prompts_tr_BLUE_fwhm[:, :, -1], 'o', ls='-')
+    plt.legend([a, b, c, d, e], ['0 PP', '50 PP', '125 PP', '250 PP', '500 PP'])
     plt.xlabel(u'SPAD pitch (µm)')
     plt.ylabel('Coincidence Time Resolution (ps FWHM)')
 
