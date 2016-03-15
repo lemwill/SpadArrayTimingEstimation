@@ -1,10 +1,11 @@
 import numpy as np
 
-def DiscriminatorWindowDensity(event_collection):
+def DiscriminatorWindowDensity(event_collection, number_of_photons_in_window=5, window_width=400):
 
     for events in xrange(event_collection.timestamps.shape[0]):
-        for photons in xrange(event_collection.timestamps.shape[1]-5):
-            if ((event_collection.timestamps[events, photons+5] - event_collection.timestamps[events, photons]) > 400):
+        for photons in xrange(event_collection.timestamps.shape[1]-number_of_photons_in_window):
+            if ((event_collection.timestamps[events, photons+number_of_photons_in_window] -
+                 event_collection.timestamps[events, photons]) > window_width):
                 event_collection.timestamps[events, photons] = np.ma.masked
             else:
                 break
