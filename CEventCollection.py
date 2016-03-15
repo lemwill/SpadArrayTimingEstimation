@@ -88,6 +88,9 @@ class CEventCollection:
         photon_count = np.ma.count(self.__timestamps, axis=1)
         qty_photons_to_keep = int(np.floor(np.average(photon_count) -2*np.std(photon_count)))
 
+        if (qty_photons_to_keep <= 0):
+            raise ValueError("Quantity of photons to keep is negative, too much variation. Please check your discriminator.")
+
         keep_mask = (photon_count >= qty_photons_to_keep)
 
         # Delete the events without sufficient useful photons
