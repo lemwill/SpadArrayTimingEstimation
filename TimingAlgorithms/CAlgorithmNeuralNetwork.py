@@ -25,18 +25,17 @@ class CAlgorithmNeuralNetwork(CAlgorithmBase):
 
     def evaluate_collection_timestamps(self, coincidence_collection):
 
-        neural_input_detector1 = coincidence_collection.detector1.timestamps[:, :self.photon_count - 1] \
-                       - coincidence_collection.detector1.timestamps[:, self.photon_count - 1:self.photon_count]
+        neural_input_detector1 = coincidence_collection.detector1.timestamps[:, 1:self.photon_count] \
+                       - coincidence_collection.detector1.timestamps[:, 0:1]
 
         timestamps_detector1 = np.matrix(self.__neural_network.network.predict(neural_input_detector1) \
-                + coincidence_collection.detector1.timestamps[:, self.photon_count - 1:self.photon_count])
+                + coincidence_collection.detector1.timestamps[:, 0:1])
 
-
-        neural_input_detector2 = coincidence_collection.detector2.timestamps[:, :self.photon_count - 1] \
-                       - coincidence_collection.detector2.timestamps[:, self.photon_count - 1:self.photon_count]
+        neural_input_detector2 = coincidence_collection.detector2.timestamps[:, 1:self.photon_count] \
+                       - coincidence_collection.detector2.timestamps[:, 0:1]
 
         timestamps_detector2 = np.matrix(self.__neural_network.network.predict(neural_input_detector2) \
-                + coincidence_collection.detector2.timestamps[:, self.photon_count - 1:self.photon_count])
+                + coincidence_collection.detector2.timestamps[:,0:1])
 
 
         timing_estimation_results = CTimingEstimationResult(self.algorithm_name, self.photon_count, timestamps_detector1, timestamps_detector2)
@@ -78,9 +77,9 @@ class CAlgorithmNeuralNetwork(CAlgorithmBase):
 
         # climate.enable_default_logging()
 
-        neural_input = self.__event_collection.detector1.timestamps[:, :self.photon_count - 1] \
-                       - self.__event_collection.detector1.timestamps[:, self.photon_count - 1:self.photon_count]
-        neural_target = np.transpose(np.matrix(self.__event_collection.detector1.interaction_time.ravel()-self.__event_collection.detector1.timestamps[:, self.photon_count - 1:self.photon_count].ravel()))
+        neural_input = self.__event_collection.detector1.timestamps[:, 1:self.photon_count] \
+                       - self.__event_collection.detector1.timestamps[:, 0:1]
+        neural_target = np.transpose(np.matrix(self.__event_collection.detector1.interaction_time.ravel()-self.__event_collection.detector1.timestamps[:, 0:1].ravel()))
 
         self.__neural_network = theanets.Experiment(
             # Neural network for regression (sigmoid hidden, linear output)

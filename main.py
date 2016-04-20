@@ -1,9 +1,9 @@
 import argparse
 
 ## Utilities
-from CCoincidenceCollection import  CCoincidenceCollection
-import CEnergyDiscrimination
-from CTdc import CTdc
+from Preprocessing import CTdc, CEnergyDiscrimination
+from Preprocessing.CCoincidenceCollection import CCoincidenceCollection
+from Preprocessing.CTdc import CTdc
 
 ## Importers
 from Importer import CImporterEventsDualEnergy
@@ -12,15 +12,17 @@ from Importer import CImporterEventsDualEnergy
 from TimingAlgorithms.CAlgorithmBlue import CAlgorithmBlue
 from TimingAlgorithms.CAlgorithmBlueDifferential import CAlgorithmBlueDifferential
 from TimingAlgorithms.CAlgorithmBlueExpectationMaximisation import CAlgorithmBlueExpectationMaximisation
-
 from TimingAlgorithms.CAlgorithmMean import CAlgorithmMean
-# from TimingAlgorithms.CAlgorithmNeuralNetwork import CAlgorithmNeuralNetwork
 from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
+from TimingAlgorithms import cramer_rao
 
 # Distriminators
 from DarkCountDiscriminator import DiscriminatorDualWindow
-from DarkCountDiscriminator import DiscriminatorForwardDelta
-from DarkCountDiscriminator import DiscriminatorWindowDensity
+from DarkCountDiscriminator import DiscriminatorMultiWindow
+
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 def run_timing_algorithm(algorithm, event_collection):
 
@@ -30,62 +32,118 @@ def run_timing_algorithm(algorithm, event_collection):
     # Print the report
     results.print_results()
 
+    return results.fetch_fwhm_time_resolution()
+
+
 def main_loop():
 
     # Parse input
     parser = argparse.ArgumentParser(description='Process data out of the Spad Simulator')
     parser.add_argument("filename", help='The file path of the data to import')
+    parser.add_argument("filename2", help='The file path of the data to import')
+
     args = parser.parse_args()
 
     # File import --------------------------------------------------------------------------------------------------
-    event_collection = CImporterEventsDualEnergy.import_data(args.filename, 0)
+    event_collection = CImporterEventsDualEnergy.import_data(args.filename)
+    event_collection2 = CImporterEventsDualEnergy.import_data(args.filename2)
+
 
     # Energy discrimination ----------------------------------------------------------------------------------------
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)
+    CEnergyDiscrimination.discriminate_by_energy(event_collection2, low_threshold_kev=425, high_threshold_kev=700)
 
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=False)
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
+    event_collection2.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
 
-    event_collection.save_for_hardware_simulator()
+    #event_collection.save_for_hardware_simulator()
 
     # Sharing of TDCs --------------------------------------------------------------------------------------------------
-    event_collection.apply_tdc_sharing( pixels_per_tdc_x=5, pixels_per_tdc_y=5)
+    #event_collection.apply_tdc_sharing( pixels_per_tdc_x=1, pixels_per_tdc_y=1)
 
     # First photon discriminator -----------------------------------------------------------------------------------
     DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
-    #DiscriminatorWindowDensity.DiscriminatorWindowDensity(event_collection, qty_photons_to_keep=9)
-    #DiscriminatorForwardDelta.DiscriminatorForwardDelta(event_collection, qty_photons_to_keep=3)
+    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection2)
+
+#    DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
+
+    #DiscriminatorWindowDensity.DiscriminatorWindowDensity(event_collection)
+    #DiscriminatorForwardDelta.DiscriminatorForwardDelta(event_collection)
 
     # Making of coincidences ---------------------------------------------------------------------------------------
-    coincidence_collection = CCoincidenceCollection(event_collection)
 
     # Apply TDC - Must be applied after making the coincidences because the coincidence adds a random time offset to pairs of events
-    tdc = CTdc(system_clock_period_ps = 4000, tdc_bin_width_ps = 10, tdc_jitter_std =10)
-    tdc.get_sampled_timestamps(coincidence_collection.detector1)
-    tdc.get_sampled_timestamps(coincidence_collection.detector2)
+    #tdc = CTdc( system_clock_period_ps = 4000, fast_oscillator_period_ps= 500, tdc_resolution = 15, tdc_jitter_std = 15)
+    #tdc.get_sampled_timestamps(event_collection)
+    #tdc.get_sampled_timestamps(event_collection2)
 
-    max_order = 8
+    coincidence_collection = CCoincidenceCollection(event_collection)
 
-    if(max_order > event_collection.qty_of_photons):
-        max_order = event_collection.qty_of_photons
+    #coincidence_collection = CCoincidenceCollection(event_collection, event_collection2)
+
+    max_order = 128
+    ctr_fwhm_array = np.array([])
+
+    if(max_order > coincidence_collection.qty_of_photons):
+        max_order = coincidence_collection.qty_of_photons
+
+
+    print max_order
 
     print "\n### Calculating time resolution for different algorithms ###"
+
+    cramer_rao.get_intrinsic_limit(coincidence_collection, photon_count=max_order)
+
     # Running timing algorithms ------------------------------------------------------------------------------------
+    ctr_fwhm_array = np.array([])
     for i in range(1, max_order):
         algorithm = CAlgorithmSinglePhoton(photon_count=i)
-        run_timing_algorithm(algorithm, coincidence_collection)
+        ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection)
+        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(ctr_fwhm_array, label='Nth photon')
 
+    ctr_fwhm_array = np.array([])
+    for i in range(1, max_order):
+        algorithm = CAlgorithmMean(photon_count=i)
+        ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection)
+        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(ctr_fwhm_array, label='Mean')
+
+
+    ctr_fwhm_array = np.array([])
     for i in range(2, max_order):
-        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i)
-        run_timing_algorithm(algorithm, coincidence_collection)
+        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i, training_iterations = 1)
+        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
+        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(ctr_fwhm_array , label='BLUE EM - 1 iteration')
 
-    #for i in range(2, max_order):
-     #   algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
-     #   run_timing_algorithm(algorithm, coincidence_collection)
+    ctr_fwhm_array = np.array([])
+    for i in range(2, max_order):
+        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i, training_iterations = 3)
+        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
+        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(ctr_fwhm_array , label='BLUE EM - 3 iterations')
 
-    #for i in range(2, max_order):
-     #   algorithm = CAlgorithmBlueDifferential(coincidence_collection, photon_count=i)
-     #   run_timing_algorithm(algorithm, coincidence_collection)
+    ctr_fwhm_array = np.array([])
+    for i in range(2, max_order):
+       algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
+       ctr_fwhm =  run_timing_algorithm(algorithm, coincidence_collection)
+       ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(ctr_fwhm_array, label='BLUE')
+
+    ctr_fwhm_array = np.array([])
+    for i in range(2, max_order):
+       algorithm = CAlgorithmBlueDifferential(coincidence_collection, photon_count=i)
+       ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
+       ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(ctr_fwhm_array , label='BLUE DIFFERENTIAL')
+
+    plt.xlabel('Number of photons used for the estimation of the time of interaction.')
+    plt.ylabel('Coincidence timing resolution (ps).')
+    plt.title('Coincidence timing resolution for different training methods of the BLUE.')
+    plt.legend()
+    plt.show()
 
     #for i in range(2, 16):
     #    algorithm = CAlgorithmMean(photon_count=i)
@@ -97,7 +155,7 @@ def main_loop():
 
 
 
-    #for i in range(13, 21):
+    #for i in range(13, 14):
     #    algorithm = CAlgorithmNeuralNetwork(coincidence_collection, photon_count=i, hidden_layers=16)
     #    run_timing_algorithm(algorithm, coincidence_collection)
 

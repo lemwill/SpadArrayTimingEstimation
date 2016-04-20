@@ -61,13 +61,6 @@ class CEventCollection:
         self.__pixel_x_coord = self.__pixel_x_coord[events_to_delete_boolean, :]
         self.__pixel_y_coord = self.__pixel_y_coord[events_to_delete_boolean, :]
 
-    def add_random_time_to_events(self, random_time):
-
-        self.interaction_time = random_time
-
-        random_offset = np.transpose(np.tile(random_time, (self.qty_of_photons, 1)))
-        self.__timestamps = self.__timestamps + random_offset
-
     def __mask_photon_types(self, photon_type):
         # Remove non valid photons
         trigger_types_to_remove = self.__trigger_type == photon_type
@@ -82,11 +75,15 @@ class CEventCollection:
         np.savetxt('spad_fired_single_event.txt', np.transpose((self.timestamps[0, :], address[0,:])), fmt='%d ps %d')   # X is an array
 
 
-    def remove_masked_photons(self):
+    def remove_masked_photons(self, keep_all_events=False):
 
         # Count the number of useful photons per event
         photon_count = np.ma.count(self.__timestamps, axis=1)
-        qty_photons_to_keep = int(np.floor(np.average(photon_count) -2*np.std(photon_count)))
+        qty_photons_to_keep = int(np.floor(np.average(photon_count) - np.std(photon_count)))
+
+        if(keep_all_events == True):
+            qty_photons_to_keep = np.min(np.ma.count(self.__timestamps, axis=1))
+
 
         keep_mask = (photon_count >= qty_photons_to_keep)
 
@@ -112,6 +109,8 @@ class CEventCollection:
         self.__pixel_y_coord = self.__pixel_y_coord[:, 0:qty_photons_to_keep]
 
         print("Events with less than {0} photons have been removed. There are {1} events left".format( qty_photons_to_keep, np.shape(self.__event_id)[0]))
+
+        return keep_mask
 
     def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True):
 
@@ -165,20 +164,31 @@ class CEventCollection:
     def apply_tdc_sharing(self, pixels_per_tdc_x = 1, pixels_per_tdc_y=1):
 
         print("\n#### Sharing TDCs ####")
-        address = (self.pixel_x_coord+1)/pixels_per_tdc_x*21 + (self.pixel_y_coord+1)/pixels_per_tdc_y
+        address = np.floor((self.pixel_x_coord+1)/pixels_per_tdc_x)*22 + np.floor((self.pixel_y_coord+1)/pixels_per_tdc_y)
 
         m = np.zeros_like(address, dtype=bool)
 
         for events in xrange(self.timestamps.shape[0]):
             m[events, np.unique(address[events,:], return_index=True)[1]] = True
 
+        self.__pixel_x_coord = np.floor(self.pixel_x_coord/pixels_per_tdc_x)
+        self.__pixel_y_coord = np.floor(self.pixel_y_coord/pixels_per_tdc_y)
+
 
         self.__timestamps = np.ma.masked_where(m==False, self.timestamps)
 
         self.remove_masked_photons()
 
+    def set_interaction_time(self, interaction_time):
+        self.__timestamps = self.__timestamps - self.__interaction_time[:, None]
+        self.__interaction_time = interaction_time
+        self.__timestamps = self.__timestamps + interaction_time[:, None]
 
-
+    def add_random_offset(self):
+        random_offset = np.random.randint(low=0, high=1000000, size=self.qty_of_events)/float(100)
+        self.__interaction_time = random_offset
+        random_offset = np.transpose(np.tile(random_offset, (self.qty_of_photons, 1)))
+        self.__timestamps = self.__timestamps + random_offset
 
     def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord):
 
@@ -190,4 +200,6 @@ class CEventCollection:
         self.__pixel_x_coord = pixel_x_coord
         self.__pixel_y_coord = pixel_y_coord
         self._energy_resolution = 0
+
+        self.add_random_offset()
         print("Event collection created with: {0} events.".format(self.qty_of_events) )

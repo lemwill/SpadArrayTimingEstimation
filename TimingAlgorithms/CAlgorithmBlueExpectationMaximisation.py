@@ -1,13 +1,16 @@
 import numpy as np
 from CTimingEstimationResult import CTimingEstimationResult
 from CAlgorithmBase import CAlgorithmBase
+import numpy as np
 
 class CAlgorithmBlueExpectationMaximisation(CAlgorithmBase):
 
-    def __init__(self, coincidence_collection,  photon_count):
-        self._mlh_coefficients = None
+    def __init__(self, coincidence_collection,  photon_count, training_iterations = 1):
+        self._mlh_coefficients1 = None
+        self._mlh_coefficients2 = None
         self._training_coincidence_collection = coincidence_collection
         self.__photon_count = photon_count
+        self.training_iterations = training_iterations
         self._calculate_coefficients()
 
     @property
@@ -21,54 +24,65 @@ class CAlgorithmBlueExpectationMaximisation(CAlgorithmBase):
     def _calculate_coefficients(self):
 
         # Moyenne
-        self._mlh_coefficients = np.zeros(self.photon_count)
-        self._mlh_coefficients.fill(1/float(self.photon_count))
-        current_mlh_length = len(self._mlh_coefficients)
+        #self._mlh_coefficients1 = np.zeros(self.photon_count)
+        #self._mlh_coefficients1 = np.random(self.photon_count)
+        #self._mlh_coefficients1.fill(1/float(self.photon_count))
+        ##self._mlh_coefficients2 = np.zeros(self.photon_count)
+        #self._mlh_coefficients2.fill(1/float(self.photon_count))
 
-        # Calcul des timestamps avec le detecteur 1
-        timestamps_detector1 = np.dot(self._training_coincidence_collection.detector1.timestamps[:, :current_mlh_length], self._mlh_coefficients)
+        self._mlh_coefficients1 = np.random.random(self.photon_count)
+        self._mlh_coefficients2 = np.random.random(self.photon_count)
+        self._mlh_coefficients1 = self._mlh_coefficients1 / np.sum(self._mlh_coefficients1)
+        self._mlh_coefficients2 = self._mlh_coefficients2 / np.sum(self._mlh_coefficients2)
 
-        # Calcul des coefficients pour le detecteur 2
-        corrected_timestamps = self._training_coincidence_collection.detector2.timestamps[:, :self.photon_count] - timestamps_detector1[:,None]
+        for i in range(1, self.training_iterations+1):
 
-        covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
-        unity = np.ones(self.photon_count)
-        inverse_covariance = np.linalg.inv(covariance)
-        w = np.dot(unity, inverse_covariance)
-        n = np.dot(w, unity.T)
-        self._mlh_coefficients = w / n
+            current_mlh_length = len(self._mlh_coefficients1)
+
+            # Calcul des timestamps avec le detecteur 1
+            timestamps_detector1 = np.dot(self._training_coincidence_collection.detector1.timestamps[:, :current_mlh_length], self._mlh_coefficients1)
+
+            # Calcul des coefficients pour le detecteur 2
+            corrected_timestamps = self._training_coincidence_collection.detector2.timestamps[:, :self.photon_count] - timestamps_detector1[:,None]
+
+            covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
+            unity = np.ones(self.photon_count)
+            inverse_covariance = np.linalg.inv(covariance)
+            w = np.dot(unity, inverse_covariance)
+            n = np.dot(w, unity.T)
+            self._mlh_coefficients2 = w / n
 
 
-        # Calcul des timestamps pour le detecteur2
-        timestamps_detector2 = np.dot(self._training_coincidence_collection.detector2.timestamps[:, :current_mlh_length], self._mlh_coefficients)
+            # Calcul des timestamps pour le detecteur2
+            timestamps_detector2 = np.dot(self._training_coincidence_collection.detector2.timestamps[:, :current_mlh_length], self._mlh_coefficients2)
 
-        # Calcul des coefficients pour le detecteur 1
-        corrected_timestamps = self._training_coincidence_collection.detector1.timestamps[:, :self.photon_count] - timestamps_detector2[:,None]
+            # Calcul des coefficients pour le detecteur 1
+            corrected_timestamps = self._training_coincidence_collection.detector1.timestamps[:, :self.photon_count] - timestamps_detector2[:,None]
 
-        covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
-        unity = np.ones(self.photon_count)
-        inverse_covariance = np.linalg.inv(covariance)
-        w = np.dot(unity, inverse_covariance)
-        n = np.dot(w, unity.T)
-        self._mlh_coefficients = w / n
+            covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
+            unity = np.ones(self.photon_count)
+            inverse_covariance = np.linalg.inv(covariance)
+            w = np.dot(unity, inverse_covariance)
+            n = np.dot(w, unity.T)
+            self._mlh_coefficients1 = w / n
 
 
 
 
     def evaluate_collection_timestamps(self, coincidence_collection):
-        current_mlh_length = len(self._mlh_coefficients)
-        timestamps_detector1 = np.dot(coincidence_collection.detector1.timestamps[:, :current_mlh_length], self._mlh_coefficients)
-        timestamps_detector2 = np.dot(coincidence_collection.detector2.timestamps[:, :current_mlh_length], self._mlh_coefficients)
+        current_mlh_length = len(self._mlh_coefficients1)
+        timestamps_detector1 = np.dot(coincidence_collection.detector1.timestamps[:, :current_mlh_length], self._mlh_coefficients1)
+        timestamps_detector2 = np.dot(coincidence_collection.detector2.timestamps[:, :current_mlh_length], self._mlh_coefficients2)
 
         timing_estimation_results = CTimingEstimationResult(self.algorithm_name, self.photon_count, timestamps_detector1, timestamps_detector2)
         return timing_estimation_results
 
     def evaluate_single_timestamp(self, single_event):
-        return np.dot(single_event.photon_timestamps[:len(self._mlh_coefficients)], self._mlh_coefficients)
+        return np.dot(single_event.photon_timestamps[:len(self._mlh_coefficients1)], self._mlh_coefficients1)
 
     def print_coefficients(self):
         self._calculate_coefficients()
-        print(self._mlh_coefficients)
+        print(self._mlh_coefficients1)
 
 CAlgorithmBase.register(CAlgorithmBlueExpectationMaximisation)
 assert issubclass(CAlgorithmBlueExpectationMaximisation, CAlgorithmBase)

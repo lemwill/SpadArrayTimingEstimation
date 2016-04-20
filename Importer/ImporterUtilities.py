@@ -1,6 +1,8 @@
-import numpy as np
-import utilities as utils
 import itertools
+
+import numpy as np
+
+from Preprocessing import utilities as utils
 
 
 def load_big_file_float( fname, LineCount = 0):

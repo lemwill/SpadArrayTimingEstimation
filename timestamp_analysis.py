@@ -3,12 +3,16 @@
 __author__ = 'acorbeil'
 
 ## Utilities
-from CCoincidenceCollection import  CCoincidenceCollection
-import CEnergyDiscrimination
-from CTdc import CTdc
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+
+from CCoincidenceCollection import  CCoincidenceCollection
+from Preprocessing import CTdc, CEnergyDiscrimination
+
+
+
+
 
 ## Importers
 from Importer import CImporterEventsDualEnergy

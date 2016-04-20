@@ -1,9 +1,10 @@
 from os import path
+
+from Preprocessing.CEventCollection import CEventCollection
 from Importer import ImporterUtilities
-from CEventCollection import CEventCollection
 
 
-def import_data(filename, event_count=0):
+def import_data(filename, event_count=0, simulate_laser_pulse=False):
 
     # read file
     if path.isfile(filename):
@@ -21,6 +22,10 @@ def import_data(filename, event_count=0):
     trigger_type = imported_data[:, 128+4:256+4]
     pixel_x_coord = imported_data[:, 256+4:384+4]
     pixel_y_coord = imported_data[:, 384+4:512+4]
+
+    if (simulate_laser_pulse == True):
+        timestamps.fill(0)
+
 
     return CEventCollection(event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord)
 
