@@ -12,7 +12,7 @@ class CTdc:
 
     """
 
-    def __init__(self, system_clock_period_ps = 4000, fast_oscillator_period_ps= 500, tdc_resolution = 17, common_error_std = 0, individual_error_std = 0, tdc_jitter_std = 15, jitter_fine_std=0):
+    def __init__(self, system_clock_period_ps = 4000, fast_oscillator_period_ps= 500, tdc_resolution = 15, tdc_resolution_error_std=0, common_error_std = 0, individual_error_std = 0, tdc_jitter_std = 0, jitter_fine_std=0):
 
         # Save TDC parameters
         self.system_clock_period_ps = system_clock_period_ps
@@ -22,6 +22,9 @@ class CTdc:
         self.individual_error_std = individual_error_std
         self.tdc_jitter_std = tdc_jitter_std
         self.jitter_fine_std = jitter_fine_std
+        self.tdc_resolution_error_std = tdc_resolution_error_std
+        self.calculate_tdc_resolutions_with_errors(22*22)
+
 
     def get_code_density(self, event_number=1000000):
 
@@ -49,41 +52,41 @@ class CTdc:
         #plt.show()
         sum_code_density = np.sum(fine_counter.size)
 
-        plt.hist(coarse_counter, bins=np.max(coarse_counter))
-        plt.show()
+        #plt.hist(coarse_counter, bins=np.max(coarse_counter)+1)
+        #plt.show()
 
         # Find coarse period
         coarse_bin_count = np.bincount(coarse_counter.ravel())
-        coarse_average_count = np.average(coarse_bin_count[0:-2])
+        coarse_average_count = np.average(coarse_bin_count[0:-1])
         coarse_period = self.system_clock_period_ps*coarse_average_count/sum_code_density
 
         # Find fine period
-        fine_counter_without_last_coarse = fine_counter[coarse_counter < np.max(coarse_counter)-1]
-        coarse_counter_without_last_coarse = coarse_counter[coarse_counter < np.max(coarse_counter)-1]
+        fine_counter_without_last_coarse = fine_counter[coarse_counter < np.max(coarse_counter)]
+        coarse_counter_without_last_coarse = coarse_counter[coarse_counter < np.max(coarse_counter)]
 
-        fine_counter_without_last_coarse = fine_counter_without_last_coarse[coarse_counter_without_last_coarse != 0]
-        coarse_counter_without_last_coarse = coarse_counter_without_last_coarse[coarse_counter_without_last_coarse != 0]
+        #fine_counter_without_last_coarse = fine_counter_without_last_coarse[coarse_counter_without_last_coarse != 0]
+       # coarse_counter_without_last_coarse = coarse_counter_without_last_coarse[coarse_counter_without_last_coarse != 0]
 
-        fine_counter_without_last_coarse = fine_counter_without_last_coarse[coarse_counter_without_last_coarse != 2]
-        coarse_counter_without_last_coarse = coarse_counter_without_last_coarse[coarse_counter_without_last_coarse != 2]
+       # fine_counter_without_last_coarse = fine_counter_without_last_coarse[coarse_counter_without_last_coarse != 2]
+       # coarse_counter_without_last_coarse = coarse_counter_without_last_coarse[coarse_counter_without_last_coarse != 2]
 
-        fine_counter_without_last_coarse = fine_counter_without_last_coarse[coarse_counter_without_last_coarse != 3]
+        #fine_counter_without_last_coarse = fine_counter_without_last_coarse[coarse_counter_without_last_coarse != 3]
 
         fine_bin_count = np.bincount(fine_counter_without_last_coarse.ravel())
         sum_fine_counter = np.sum(fine_bin_count)
 
         #x = range(np.max(fine_counter))
         #plt.bar(x, fine_counter, width=1)
-        plt.hist(fine_counter_without_last_coarse, bins=np.max(fine_counter))
-        plt.show()
+        #plt.hist(fine_counter_without_last_coarse, bins=np.max(fine_counter))
+        #plt.show()
 
         max_bin_for_averaging = int(0.75*np.max(fine_counter_without_last_coarse))
         #max_bin_for_averaging = 100
         fine_average_count = np.average(fine_bin_count[3:max_bin_for_averaging])
 
         fine_period2 = coarse_period*fine_average_count/sum_fine_counter
-        print coarse_period
-        print fine_period2
+       #print coarse_period
+        #print fine_period2
         return coarse_period, fine_period2
 
     def print_dnl(self, timestamps, fine_period):
@@ -111,12 +114,6 @@ class CTdc:
         x = range(0,  int(cumsum.shape[0]))
         # x = x*np.max(cumsum)/float(cumsum.shape[0])
 
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x, cumsum)
-
-        line_function = np.array(slope)*x+np.array(intercept)
-
-        print slope
-        print intercept
 
         #diff = cumsum-line_function
         #diff = diff/fine_period2
@@ -140,12 +137,104 @@ class CTdc:
 
         self.get_coarse_and_fine_counters(coarse_counter, fine_counter)
 
-    def get_sampled_timestamps(self, event_collection):
+    def get_sampled_timestamps(self, event_collection, correct_resolution = False):
 
-        global_counter, rough_counter, fine_counter = self.get_tdc_code(event_collection)
-        timestamps = global_counter*self.system_clock_period_ps + rough_counter*self.fast_oscillator_period_ps + fine_counter*(self.fast_oscillator_period_ps-self.slow_oscillator_period_ps)
+        global_counter, coarse_counter, fine_counter = self.get_tdc_code(event_collection)
+        tdc_x =int(np.max(event_collection.pixel_x_coord))+1
+        tdc_y = int(np.max(event_collection.pixel_y_coord))+1
 
-        event_collection.timestamps[:,:] = np.sort(timestamps, axis = 1)
+
+        timestamps = np.empty(shape=(0,0))
+        interaction_time = np.empty(shape=(0,0))
+
+        timestamps = event_collection.timestamps
+
+
+        if (correct_resolution == False):
+            timestamps = global_counter*self.system_clock_period_ps + coarse_counter*self.fast_oscillator_period_ps + fine_counter*(self.fast_oscillator_period_ps-self.slow_oscillator_period_ps)
+            event_collection.timestamps = timestamps
+
+        else:
+            self.estimate_all_tdc_resolutions()
+
+            for x in range(0, tdc_x):
+                for y in range(0, tdc_y):
+                    current_global = global_counter[np.logical_and(event_collection.pixel_x_coord==x, event_collection.pixel_y_coord==y)]
+                    current_coarse = coarse_counter[np.logical_and(event_collection.pixel_x_coord==x, event_collection.pixel_y_coord==y)]
+                    current_fine = fine_counter[np.logical_and(event_collection.pixel_x_coord==x, event_collection.pixel_y_coord==y)]
+
+                    #print self.coarse_periods[x][y]
+                    #coarse_periods[x][y] = 510
+                    #fine_periods[x][y] = 15
+
+                    new_timestamps = current_global*self.system_clock_period_ps + current_coarse*self.coarse_periods[x][y] + current_fine*self.fine_periods[x][y]
+                    timestamps[np.logical_and(event_collection.pixel_x_coord==x, event_collection.pixel_y_coord==y)] = new_timestamps
+                    #timestamps = np.append(timestamps, new_timestamps)
+
+            event_collection.timestamps = timestamps
+
+        event_collection.timestamps = np.sort(event_collection.timestamps , axis = 1)
+
+
+
+    def estimate_all_tdc_resolutions(self, event_number=100000):
+
+        tdc_x = 22
+        tdc_y = 22
+        self.coarse_periods = np.empty((tdc_x, tdc_y))
+        self.fine_periods = np.empty((tdc_x, tdc_y))
+
+        coarse_periods = np.empty((tdc_x,tdc_y))
+        fine_periods = np.empty((tdc_x,tdc_y))
+        for x in range(0, int(tdc_x)):
+            for y in range(0, int(tdc_y)):
+
+                event_collection = CImporterRandom.import_data(event_number, min_tdc_x=x, max_tdc_x=x+1, min_tdc_y=y, max_tdc_y=y+1)
+
+                event_collection.set_interaction_time(np.full_like(event_collection.interaction_time, 0))
+                global_counter, coarse_counter, fine_counter = self.get_tdc_code(event_collection)
+
+                #current_coarse = coarse_counter[np.logical_and(event_collection.pixel_x_coord==x, event_collection.pixel_y_coord==y)]
+                #current_fine = fine_counter[np.logical_and(event_collection.pixel_x_coord==x, event_collection.pixel_y_coord==y)]
+                self.coarse_periods[x][y], self.fine_periods[x][y] = self.get_coarse_and_fine_counters(coarse_counter, fine_counter)
+                #self.coarse_periods[x][y] = np.round(self.coarse_periods[x][y])
+                #self.fine_periods[x][y] = np.round(self.fine_periods[x][y])
+
+        print self.coarse_periods
+        print self.fine_periods
+        return self.coarse_periods, self.fine_periods
+
+    def calculate_tdc_resolutions_with_errors(self, number_of_tdcs):
+
+        self.fine_resolutions = np.empty(shape=(number_of_tdcs))
+        self.coarse_resolutions = np.empty(shape=(number_of_tdcs))
+
+        for i in range(0, int(number_of_tdcs)):
+
+            if(self.individual_error_std > 0):
+                slow_error = np.random.normal(loc=0.0, scale=self.individual_error_std)
+                fast_error = np.random.normal(loc=0.0, scale=self.individual_error_std)
+            else:
+                slow_error = 0
+                fast_error = 0
+
+            if(self.common_error_std > 0):
+                common_error = np.random.normal(loc=0.0, scale=self.common_error_std)
+            else:
+                common_error = 0
+
+            if(self.tdc_resolution_error_std > 0):
+                tdc_resolution_error = np.random.normal(loc=0.0, scale=self.tdc_resolution_error_std)
+            else:
+                tdc_resolution_error = 0
+
+
+            self.coarse_resolutions[i] = self.fast_oscillator_period_ps+fast_error+common_error
+            slow_oscilator_real_period =  self.slow_oscillator_period_ps+slow_error+common_error
+
+            self.fine_resolutions[i] = self.coarse_resolutions[i]-slow_oscilator_real_period + tdc_resolution_error
+
+
 
     def get_tdc_code(self, event_collection):
 
@@ -160,30 +249,17 @@ class CTdc:
         global_counter = np.floor(global_counter).astype(np.int)
         coarse_time = event_collection.timestamps % self.system_clock_period_ps
 
+        #plt.hist(coarse_time)
+        #plt.show()
         # Calculate the variation in fast and slow counter speeds
         coarse_oscillator_periods = np.empty_like(coarse_time, dtype=float)
         pixel_coord = event_collection.pixel_x_coord*22+ event_collection.pixel_y_coord
         fine_oscillator_periods = np.empty_like(coarse_time, dtype=float)
 
-        for i in range(0, int(np.max(pixel_coord))+1):
 
-            if(self.individual_error_std > 0):
-                slow_error = np.random.normal(loc=0.0, scale=self.individual_error_std)
-                fast_error = np.random.normal(loc=0.0, scale=self.individual_error_std)
-            else:
-                slow_error = 0
-                fast_error = 0
-
-            if(self.common_error_std > 0):
-                common_error = np.random.normal(loc=0.0, scale=self.common_error_std)
-            else:
-                common_error = 0
-
-            fast_oscilator_real_period = self.fast_oscillator_period_ps+fast_error+common_error
-            slow_oscilator_real_period =  self.slow_oscillator_period_ps+slow_error+common_error
-
-            np.place(coarse_oscillator_periods, pixel_coord == i, fast_oscilator_real_period)
-            np.place(fine_oscillator_periods, pixel_coord == i, fast_oscilator_real_period-slow_oscilator_real_period)
+        for i in range(int(np.min(pixel_coord)), int(np.max(pixel_coord))+1):
+            np.place(coarse_oscillator_periods, pixel_coord == i, self.coarse_resolutions[i])
+            np.place(fine_oscillator_periods, pixel_coord == i, self.fine_resolutions[i])
 
 
         # Sample the coarse counter
@@ -197,6 +273,7 @@ class CTdc:
         fine_counter = np.floor(fine_counter).astype(np.int)
         fine_total_jitter = self.jitter_fine_std*np.sqrt(fine_counter+1)
         if (self.jitter_fine_std > 0):
+            fine_total_jitter[fine_total_jitter==0] = 0.01
             fine_error = np.random.normal(loc=0.0, scale=fine_total_jitter)
         else:
             fine_error = 0

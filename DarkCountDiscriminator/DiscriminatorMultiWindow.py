@@ -2,11 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def DiscriminatorMultiWindow(event_collection, coefficient=2):
+def DiscriminatorMultiWindow(event_collection, coefficient=4):
 
     timestamps_diff = np.diff(event_collection.timestamps)
-    timestamp_diff_std = np.std(timestamps_diff, axis=0)
-    cumsum = np.cumsum(np.average(timestamps_diff, axis=0))
+    timestamp_diff_std = np.median(timestamps_diff, axis=0)
+    #cumsum = np.cumsum(np.average(timestamps_diff, axis=0))
+    cumsum = np.median(np.cumsum(timestamps_diff, axis=0), axis=1)
 
 
    # print np.median(timestamp_diff_std)
@@ -14,11 +15,11 @@ def DiscriminatorMultiWindow(event_collection, coefficient=2):
     #plt.plot(timestamp_diff_std)
     plt.show()
 
-    for i in xrange(3,16):
+    for i in xrange(3, 16):
 
         for events in xrange(event_collection.timestamps.shape[0]):
             for photons in xrange(event_collection.timestamps.shape[1]-i-1):
-                if ((event_collection.timestamps[events, photons+i] - event_collection.timestamps[events, photons]) > cumsum[i]*2):
+                if ((event_collection.timestamps[events, photons+i] - event_collection.timestamps[events, photons]) > cumsum[i]*coefficient):
                     event_collection.timestamps[events, photons] = np.ma.masked
                 else:
                     break

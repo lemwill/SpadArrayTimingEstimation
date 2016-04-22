@@ -1,7 +1,7 @@
 import numpy as np
 import os
 
-class CEventCollection:
+class CEventCollection(object):
     type_invalid = 0
     type_photon = 1
     type_thermal_noise = 2
@@ -18,6 +18,10 @@ class CEventCollection:
     @property
     def timestamps(self):
         return self.__timestamps
+
+    @timestamps.setter
+    def timestamps(self, value):
+        self.__timestamps = value
 
     @property
     def interaction_time(self):
@@ -185,12 +189,12 @@ class CEventCollection:
         self.__timestamps = self.__timestamps + interaction_time[:, None]
 
     def add_random_offset(self):
-        random_offset = np.random.randint(low=0, high=1000000, size=self.qty_of_events)/float(100)
+        random_offset = np.random.randint(low=0, high=100000000, size=self.qty_of_events)/float(100)
         self.__interaction_time = random_offset
         random_offset = np.transpose(np.tile(random_offset, (self.qty_of_photons, 1)))
         self.__timestamps = self.__timestamps + random_offset
 
-    def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord):
+    def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord, verbose=True):
 
         self.__event_id = event_id
         self.__trigger_type = trigger_type
@@ -202,4 +206,5 @@ class CEventCollection:
         self._energy_resolution = 0
 
         self.add_random_offset()
-        print("Event collection created with: {0} events.".format(self.qty_of_events) )
+        if(verbose == True):
+            print("Event collection created with: {0} events.".format(self.qty_of_events) )

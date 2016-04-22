@@ -10,11 +10,14 @@ from Importer import CImporterEventsDualEnergy
 
 ## Algorithms
 from TimingAlgorithms.CAlgorithmBlueExpectationMaximisation import CAlgorithmBlueExpectationMaximisation
+from TimingAlgorithms.CAlgorithmBlue import CAlgorithmBlue
+
 from TimingAlgorithms.CAlgorithmMean import CAlgorithmMean
 from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
 
 # Distriminators
 from DarkCountDiscriminator import DiscriminatorMultiWindow
+from DarkCountDiscriminator import DiscriminatorDualWindow
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -49,10 +52,10 @@ def main_loop():
     ctr_fwhm_array_blue_differential = np.array([])
 
     # Energy discrimination ----------------------------------------------------------------------------------------
-    CEnergyDiscrimination.discriminate_by_energy(event_collection_original, low_threshold_kev=425, high_threshold_kev=700)
+    CEnergyDiscrimination.discriminate_by_energy(event_collection_original, low_threshold_kev=400, high_threshold_kev=700)
 
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection_original.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
+    event_collection_original.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
 
 
     number_of_tests = 11
@@ -67,19 +70,19 @@ def main_loop():
         # Sharing of TDCs --------------------------------------------------------------------------------------------------
         event_collection_copy.apply_tdc_sharing(pixels_per_tdc_x=j+1, pixels_per_tdc_y=j+1)
 
-        # Making of coincidences ---------------------------------------------------------------------------------------
-        coincidence_collection = CCoincidenceCollection(event_collection_copy)
+
 
         # Apply TDC - Must be applied after making the coincidences because the coincidence adds a random time offset to pairs of events
-        tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=500, tdc_resolution=15, tdc_jitter_std=15)
+        tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=500, tdc_resolution=5, jitter_fine_std=0)
 
-        tdc.get_sampled_timestamps(coincidence_collection.detector1)
-        tdc.get_sampled_timestamps(coincidence_collection.detector2)
+        tdc.get_sampled_timestamps(event_collection_copy)
 
         # First photon discriminator -----------------------------------------------------------------------------------
-        DiscriminatorMultiWindow.discriminate_coincidence_collection(coincidence_collection)
-        coincidence_collection.equalize_number_of_events()
-        #DiscriminatorMultiWindow.DiscriminatorDualWindow(event_col lection_copy)
+        #DiscriminatorMultiWindow.discriminate_event_collection(event_collection_copy)
+        DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection_copy)
+
+        # Making of coincidences ---------------------------------------------------------------------------------------
+        coincidence_collection = CCoincidenceCollection(event_collection_copy)
 
 
         # Calculating the number of TDCs
@@ -108,14 +111,14 @@ def main_loop():
 
         ctr_fwhm_lowest= 10000
         for i in range(2, max_order):
-            algorithm = CAlgorithmMean(photon_count=i)
+            algorithm = CAlgorithmMean(photon_count=i+1)
             ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection)
             if( ctr_fwhm_lowest > ctr_fwhm) :
                 ctr_fwhm_lowest = ctr_fwhm
         ctr_fwhm_array_mean = np.hstack((ctr_fwhm_array_mean, np.array(ctr_fwhm_lowest)))
 
-        if (max_order > 2):
-            algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=max_order)
+        if (max_order > 1):
+            algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i+1)
             ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
             ctr_fwhm_array_blue_em = np.hstack((ctr_fwhm_array_blue_em, np.array(ctr_fwhm)))
 
@@ -128,9 +131,9 @@ def main_loop():
         # ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
         # ctr_fwhm_array_blue_differential = np.hstack((ctr_fwhm_array_blue_differential, np.array(ctr_fwhm)))
 
-    plt.plot(bin_width_error_perc, ctr_fwhm_array_single, label='Nth photon')
-    plt.plot(bin_width_error_perc, ctr_fwhm_array_mean, label='Mean')
-    plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em, label='BLUE Expectation Maximisation')
+    plt.plot(bin_width_error_perc, ctr_fwhm_array_single, label='Nth photon with lowest variance', marker='o')
+    plt.plot(bin_width_error_perc, ctr_fwhm_array_mean, label='Mean', marker='D')
+    plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em, label='BLUE')
     # plt.plot(bin_width_error_perc*100, ctr_fwhm_array_blue_differential, label='BLUE Differential')
     plt.xlabel('Number of TDCs in a 484 SPAD array')
     plt.ylabel('Coincidence timing resolution (ps)')

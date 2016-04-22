@@ -47,23 +47,26 @@ class CCoincidenceCollection:
             # Copy the event_collection in two different variables
             self.detector1 = copy.deepcopy(event_collection)
             self.detector2 = copy.deepcopy(event_collection)
+
+             # Select the number of events to keep
+            events_to_delete = np.zeros(self.detector1.qty_of_events, bool)
+            half_qty_of_events = event_collection.qty_of_events/2
+
+            # In detector 1, keep the second half of events
+            events_to_delete[0:half_qty_of_events] = True
+            events_to_delete[half_qty_of_events:] = False
+            self.detector1.delete_events(events_to_delete)
+
+            # In detector 2, keep the first half of events
+            events_to_delete[0:half_qty_of_events] = False
+            events_to_delete[half_qty_of_events:] = True
+            self.detector2.delete_events(events_to_delete)
+
         else:
             self.detector1 = event_collection
             self.detector2 = event_collection2
 
-        # Select the number of events to keep
-        events_to_delete = np.zeros(self.detector1.qty_of_events, bool)
-        half_qty_of_events = event_collection.qty_of_events/2
 
-        # In detector 1, keep the second half of events
-        events_to_delete[0:half_qty_of_events] = True
-        events_to_delete[half_qty_of_events:] = False
-        self.detector1.delete_events(events_to_delete)
-
-        # In detector 2, keep the first half of events
-        events_to_delete[0:half_qty_of_events] = False
-        events_to_delete[half_qty_of_events:] = True
-        self.detector2.delete_events(events_to_delete)
 
         self.equalize_number_of_events()
         self.detector2.set_interaction_time(self.detector1.interaction_time)
