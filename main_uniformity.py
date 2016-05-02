@@ -106,7 +106,7 @@ def main_loop():
 
     plt.xlabel('Dispersion of the periods of the slow and fast oscillators of the TDCs (ps STD)')
     plt.ylabel('Timing resolution (ps STD)')
-    plt.title('Impact of the uniformity of a TDC array on timing performance')
+    #plt.title('Impact of the uniformity of a TDC array on timing performance')
    # plt.hist(histogram.ravel(), bins=64)
     plt.legend()
     plt.show()

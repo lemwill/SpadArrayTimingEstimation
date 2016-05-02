@@ -85,7 +85,7 @@ def main_loop():
 
     #coincidence_collection = CCoincidenceCollection(event_collection, event_collection2)
 
-    max_order = 128
+    max_order = 100
     ctr_fwhm_array = np.array([])
 
     if(max_order > coincidence_collection.qty_of_photons):
@@ -113,7 +113,7 @@ def main_loop():
         algorithm = CAlgorithmSinglePhoton(photon_count=i)
         ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(ctr_fwhm_array, label='Nth photon', marker='o', markevery=0.06)
+    plt.plot(range(1, max_order), ctr_fwhm_array, label='Nth photon', marker='o', markevery=0.06)
 
    # ctr_fwhm_array = np.array([])
    # for i in range(1, max_order):
@@ -128,33 +128,34 @@ def main_loop():
         algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i, training_iterations = 1)
         ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(ctr_fwhm_array , label='BLUE EM - 1 iteration', marker='D', markevery=0.04)
+    plt.plot(range(2, max_order), ctr_fwhm_array , label='BLUE iterative - 1 iteration', marker='D', markevery=0.04)
 
     ctr_fwhm_array = np.array([])
     for i in range(2, max_order):
         algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i, training_iterations = 3)
         ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(ctr_fwhm_array , label='BLUE EM - 3 iterations')
+    plt.plot(range(2, max_order), ctr_fwhm_array , label='BLUE iterative - 3 iterations')
 
     #ctr_fwhm_array = np.array([])
-    #for i in range(2, max_order):
-    #   algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
-    #  ctr_fwhm =  run_timing_algorithm(algorithm, coincidence_collection)
-    #   ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    #plt.plot(ctr_fwhm_array, label='BLUE', marker=marker)
-    #marker = markers.next()
+   # for i in range(2, max_order):
+   #    algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
+   #    ctr_fwhm =  run_timing_algorithm(algorithm, coincidence_collection)
+   #    ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+   # plt.plot(ctr_fwhm_array, label='BLUE')
+   # marker = markers.next()
 
     ctr_fwhm_array = np.array([])
+
     for i in range(2, max_order):
        algorithm = CAlgorithmBlueDifferential(coincidence_collection, photon_count=i)
        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(ctr_fwhm_array , label='BLUE DIFFERENTIAL', marker='^', markevery=0.05)
+    plt.plot(range(2, max_order), ctr_fwhm_array , label='BLUE differential', marker='^', markevery=0.05)
 
 
-    plt.axhline(y=cramer_rao_limit, linestyle='dotted', label='Cramer Rao limit\n of the photodetector\n(with ' + str(max_order) + ' photons)')
-    plt.xlabel('Number of photons used to estimate the time of interaction.')
+    plt.axhline(y=cramer_rao_limit, linestyle='dotted', label='Intrinsic limit when knowing\nthe interaction time\n(calculated with the ' + str(max_order) + ' first photons)')
+    plt.xlabel('Order of photons used to estimate the time of interaction.')
     plt.ylabel('Coincidence timing resolution (ps).')
     plt.title('Coincidence timing resolution for BLUE\n with different training methods.')
     plt.legend()
