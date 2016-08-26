@@ -23,7 +23,7 @@ class ImporterRoot:
     def import_all_spad_events(self, number_of_events, start=0):
         # This loads the entry in tree
         if number_of_events == 0:
-            number_of_events = self.mytree.GetEntries()-start
+            number_of_events = self.tree.GetEntries()-start
 
         #Initialize empty arrays
         max_elements = 128
@@ -36,7 +36,7 @@ class ImporterRoot:
         spad_trigger_count = np.zeros(number_of_events)
         avalanche_count = np.zeros(number_of_events)
 
-        valid_event_count=0;
+        valid_event_count = 0
         for event_id in range(start, number_of_events+start):
             self.tree.GetEntry(event_id)
             test_global_time = np.array(self.tree.GlobalTime[:])
@@ -51,9 +51,12 @@ class ImporterRoot:
             photon_count[valid_event_count] = self.tree.PhotonCount
             spad_trigger_count[valid_event_count] = self.tree.SpadTriggeredCount
             avalanche_count[valid_event_count] = self.tree.AvalancheCount
-            valid_event_count = + 1
+            valid_event_count += 1
 
-        return CEventCollection(event_ID, global_time, spad_trigger_count, trigger_type, pixel_x_coord, pixel_y_coord)
+        valid_event_count -= 1
+        return CEventCollection(event_ID[0:valid_event_count], global_time[0:valid_event_count],
+                                spad_trigger_count[0:valid_event_count], trigger_type[0:valid_event_count],
+                                pixel_x_coord[0:valid_event_count], pixel_y_coord[0:valid_event_count])
 
     def close_file(self):
         self.file.Close()
