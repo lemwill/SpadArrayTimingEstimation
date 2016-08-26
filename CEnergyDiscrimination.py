@@ -66,12 +66,11 @@ def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_k
     spad_triggered = event_collection.qty_spad_triggered
     keep_list = (spad_triggered > low_threshold_spad_triggered) & (spad_triggered < high_threshold_spad_triggered)
 
-
     event_collection.delete_events(keep_list)
 
     event_collection.set_energy_resolution(100*photopeak_sigma*(2*np.sqrt(2*np.log(2)))/photopeak_mean)
 
-    print("Events with over under {0} kev or over {1} kev have been removed. There are {2} events left".format(low_threshold_kev, high_threshold_kev, event_collection.qty_of_events))
+    print("Events with under {0} kev or over {1} kev have been removed. There are {2} events left".format(low_threshold_kev, high_threshold_kev, event_collection.qty_of_events))
     print("Energy resolution is {0:.2f} %".format(event_collection.get_energy_resolution()))
 
 class CEnergyDiscrimination:

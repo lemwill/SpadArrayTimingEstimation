@@ -35,11 +35,12 @@ def collection_procedure(filename):
     # File import -----------------------------------------------------------
     importer = ImporterRoot()
     importer.open_root_file(filename)
-    event_collection = importer.import_all_spad_events(100)
+    event_collection = importer.import_all_spad_events(0)
     print("#### Opening file ####")
     print(filename)
+    print(event_collection.qty_spad_triggered)
     # Energy discrimination -------------------------------------------------
-    CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425,
+    CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=0,
                                                  high_threshold_kev=700)
 
     # Filtering of unwanted photon types ------------------------------------
@@ -80,10 +81,20 @@ def main_loop():
     filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110TW_Baseline.root"
 
     event_collection, coincidence_collection = collection_procedure(filename)
+    CEnergyDiscrimination.display_energy_spectrum(event_collection)
 
     energy_resolution = event_collection.get_energy_resolution()
+
+    # Energy algorithms testing
+
+
+
+    # Timing algorithm check
     max_single_photon = 8
     max_BLUE = 10
+
+    tr_sp_fwhm = np.zeros(max_single_photon)
+    tr_BLUE_fwhm = np.zeros(max_BLUE)
 
     if(max_single_photon > event_collection.qty_of_photons):
         max_single_photon = event_collection.qty_of_photons
@@ -93,13 +104,13 @@ def main_loop():
     # Running timing algorithms ------------------------------------------------
     for p in range(1, max_single_photon):
         algorithm = CAlgorithmSinglePhoton(photon_count=p)
-        crystal_tr_sp_fwhm[j, i, p-1] = run_timing_algorithm(algorithm, coincidence_collection)
+        tr_sp_fwhm[p-1] = run_timing_algorithm(algorithm, coincidence_collection)
 
     if(max_BLUE > event_collection.qty_of_photons):
         max_BLUE = event_collection.qty_of_photons
 
     for p in range(2, max_BLUE):
         algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=p)
-        crystal_tr_BLUE_fwhm[j, i, p-2] = run_timing_algorithm(algorithm, coincidence_collection)
+        tr_BLUE_fwhm[p-2] = run_timing_algorithm(algorithm, coincidence_collection)
 
 main_loop()
