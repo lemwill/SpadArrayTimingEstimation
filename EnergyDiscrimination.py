@@ -8,6 +8,7 @@ import CEnergyDiscrimination
 from CTdc import CTdc
 import numpy as np
 import matplotlib
+import copy
 import matplotlib.pyplot as plt
 
 ## Importers
@@ -61,7 +62,7 @@ def collection_procedure(filename):
 
     # Apply TDC - Must be applied after making the coincidences because the
     # coincidence adds a random time offset to pairs of events
-    tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=10, tdc_jitter_std=15)
+    tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=25, tdc_jitter_std=15)
     tdc.get_sampled_timestamps(coincidence_collection.detector1)
     tdc.get_sampled_timestamps(coincidence_collection.detector2)
 
@@ -77,6 +78,12 @@ def main_loop():
 
     matplotlib.rc('font', **font)
     arraysize = 1000
+    nbins = 128
+    energy_thld = np.zeros(50000)
+    hist = np.zeros(nbins)
+    bins = np.zeros(nbins)
+    d_hist = np.zeros(nbins-1)
+    dd_hist = np.zeros(nbins-2)
 
     filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110TW_Baseline.root"
 
@@ -84,10 +91,49 @@ def main_loop():
     CEnergyDiscrimination.display_energy_spectrum(event_collection)
 
     energy_resolution = event_collection.get_energy_resolution()
+    high_energy_collection = copy.deepcopy(event_collection)
+    low_energy_collection = copy.deepcopy(event_collection)
+    low, high = CEnergyDiscrimination.discriminate_by_energy(high_energy_collection, 400, 700)
+    # CEnergyDiscrimination.display_energy_spectrum(high_energy_collection)
+
+    CEnergyDiscrimination.discriminate_by_energy(low_energy_collection, 0, 400)
+    # CEnergyDiscrimination.display_energy_spectrum(low_energy_collection)
+
+    Full_event_photopeak = np.logical_and(np.less_equal(event_collection.qty_spad_triggered, high),
+                                          np.greater_equal(event_collection.qty_spad_triggered, low))
 
     # Energy algorithms testing
 
+    event_count = np.shape(event_collection.timestamps)[0]
+    energy_thld[0:event_count] = event_collection.timestamps[:, 60]
 
+    print(np.shape(event_collection.timestamps), np.shape(energy_thld[0:event_count]))
+
+    [hist, bin_edges] = np.histogram(energy_thld[0:event_count], nbins)
+
+    bins = bin_edges[0:-1]+((bin_edges[1]-bin_edges[0])/2)
+
+    dd_hist = np.diff(hist, 2)
+    minimum = np.argmin(dd_hist)
+    maximum = np.argmax(dd_hist[minimum:minimum+8])
+    cutoff_bin = round(minimum+maximum)-10
+    cutoff = bins[cutoff_bin]
+    print("Cutoff was set at {0} which is bin {1}". format(cutoff, cutoff_bin))
+
+    estimation_photopeak = np.logical_and(np.less_equal(energy_thld[0:event_count], cutoff),
+                                          np.greater_equal(energy_thld[0:event_count], 50))
+
+    True_positive = np.logical_and(Full_event_photopeak, estimation_photopeak[0:event_collection.qty_of_events])
+    True_negative = np.logical_and(np.logical_not(Full_event_photopeak), np.logical_not(estimation_photopeak[0:event_collection.qty_of_events]))
+
+    False_positive = np.logical_and(np.logical_not(Full_event_photopeak), estimation_photopeak[0:event_collection.qty_of_events])
+    False_negative = np.logical_and(Full_event_photopeak, np.logical_not(estimation_photopeak[0:event_collection.qty_of_events]))
+
+    print(np.count_nonzero(True_positive), np.count_nonzero(True_negative),
+          np.count_nonzero(False_positive), np.count_nonzero(False_negative))
+
+    print(np.count_nonzero(True_positive)+np.count_nonzero(True_negative),
+          np.count_nonzero(False_negative)+np.count_nonzero(False_positive))
 
     # Timing algorithm check
     max_single_photon = 8

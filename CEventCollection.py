@@ -16,6 +16,10 @@ class CEventCollection:
     type_dead_space_dropped=16
 
     @property
+    def event_id(self):
+        return self.__event_id
+
+    @property
     def timestamps(self):
         return self.__timestamps
 
@@ -26,6 +30,7 @@ class CEventCollection:
     @property
     def qty_spad_triggered(self):
         return self.__qty_spad_triggered
+
     @property
     def trigger_type(self):
         return self.__trigger_type
