@@ -88,7 +88,7 @@ def main_loop():
     filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110TW_Baseline.root"
 
     event_collection, coincidence_collection = collection_procedure(filename)
-    CEnergyDiscrimination.display_energy_spectrum(event_collection)
+    # CEnergyDiscrimination.display_energy_spectrum(event_collection)
 
     energy_resolution = event_collection.get_energy_resolution()
     high_energy_collection = copy.deepcopy(event_collection)
@@ -105,7 +105,7 @@ def main_loop():
     # Energy algorithms testing
 
     event_count = np.shape(event_collection.timestamps)[0]
-    energy_thld[0:event_count] = event_collection.timestamps[:, 60]
+    energy_thld[0:event_count] = event_collection.timestamps[:, 20]
 
     print(np.shape(event_collection.timestamps), np.shape(energy_thld[0:event_count]))
 
@@ -114,9 +114,16 @@ def main_loop():
     bins = bin_edges[0:-1]+((bin_edges[1]-bin_edges[0])/2)
 
     dd_hist = np.diff(hist, 2)
-    minimum = np.argmin(dd_hist)
-    maximum = np.argmax(dd_hist[minimum:minimum+8])
-    cutoff_bin = round(minimum+maximum)-10
+    d_hist = np.diff(hist)
+
+    plt.figure(1)
+    plt.plot(bins, hist)
+    plt.plot(bins[0:-1], np.diff(hist))
+    plt.plot(bins[1:-1], dd_hist)
+
+    max_peak = np.argmax(hist)
+    max_slope = np.argmin(d_hist[max_peak:2*max_peak])
+    cutoff_bin = int(round(max_peak+3*max_slope))
     cutoff = bins[cutoff_bin]
     print("Cutoff was set at {0} which is bin {1}". format(cutoff, cutoff_bin))
 
@@ -134,6 +141,26 @@ def main_loop():
 
     print(np.count_nonzero(True_positive)+np.count_nonzero(True_negative),
           np.count_nonzero(False_negative)+np.count_nonzero(False_positive))
+
+    plt.figure(0)
+    index = np.logical_or(True_positive, True_negative)
+    ETT = energy_thld[index]
+    index = np.logical_or(False_positive, False_negative)
+    ETTF = energy_thld[index]
+    plt.hist([ETT, ETTF], 128, stacked=True, color=['blue', 'red'])
+    plt.axvline(bins[cutoff_bin], color='green', linestyle = 'dashed', linewidth=2)
+    plt.xlabel('Arrival time of 64th photon (ps)')
+    plt.xlim([50, 100])
+    plt.ylabel('Counts')
+
+    plt.figure(50)
+    index = np.logical_or(True_positive, True_negative)
+    ETT = event_collection.qty_spad_triggered[index]
+    index = np.logical_or(False_positive, False_negative)
+    ETTF = event_collection.qty_spad_triggered[index]
+    plt.hist([ETT, ETTF], 96, stacked=True, color=['blue', 'red'])
+    plt.xlabel('Total number of SPADs triggered')
+    plt.ylabel('Counts')
 
     # Timing algorithm check
     max_single_photon = 8
@@ -160,3 +187,4 @@ def main_loop():
         tr_BLUE_fwhm[p-2] = run_timing_algorithm(algorithm, coincidence_collection)
 
 main_loop()
+plt.show()
