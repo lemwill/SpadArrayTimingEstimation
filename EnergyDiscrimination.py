@@ -104,64 +104,84 @@ def main_loop():
 
     # Energy algorithms testing
 
-    event_count = np.shape(event_collection.timestamps)[0]
-    energy_thld[0:event_count] = event_collection.timestamps[:, 20]
+    mips = range(10, 100, 5)
+    event_count = event_collection.qty_of_events
+    true_positive_count = np.zeros(np.size(mips))
+    true_negative_count = np.zeros(np.size(mips))
+    false_positive_count = np.zeros(np.size(mips))
+    false_negative_count = np.zeros(np.size(mips))
+    success = np.zeros(np.size(mips))
 
-    print(np.shape(event_collection.timestamps), np.shape(energy_thld[0:event_count]))
+    for i, mip in enumerate(mips):
+        energy_thld[0:event_count] = event_collection.timestamps[:, mip]
 
-    [hist, bin_edges] = np.histogram(energy_thld[0:event_count], nbins)
+        [hist, bin_edges] = np.histogram(energy_thld[0:event_count], nbins)
 
-    bins = bin_edges[0:-1]+((bin_edges[1]-bin_edges[0])/2)
+        bins = bin_edges[0:-1]+((bin_edges[1]-bin_edges[0])/2)
 
-    dd_hist = np.diff(hist, 2)
-    d_hist = np.diff(hist)
+        dd_hist = np.diff(hist, 2)
+        d_hist = np.diff(hist)
 
-    plt.figure(1)
-    plt.plot(bins, hist)
-    plt.plot(bins[0:-1], np.diff(hist))
-    plt.plot(bins[1:-1], dd_hist)
+        # plt.figure(1)
+        # plt.plot(bins, hist)
+        # plt.plot(bins[0:-1], np.diff(hist))
+        # plt.plot(bins[1:-1], dd_hist)
 
-    max_peak = np.argmax(hist)
-    max_slope = np.argmin(d_hist[max_peak:2*max_peak])
-    cutoff_bin = int(round(max_peak+3*max_slope))
-    cutoff = bins[cutoff_bin]
-    print("Cutoff was set at {0} which is bin {1}". format(cutoff, cutoff_bin))
+        max_peak = np.argmax(hist)
+        max_slope = np.argmin(d_hist[max_peak:2*max_peak])
+        cutoff_bin = int(round(max_peak+3*max_slope))
+        cutoff = bins[cutoff_bin]
+        print("Cutoff was set at {0} which is bin {1}". format(cutoff, cutoff_bin))
 
-    estimation_photopeak = np.logical_and(np.less_equal(energy_thld[0:event_count], cutoff),
-                                          np.greater_equal(energy_thld[0:event_count], 50))
+        estimation_photopeak = np.logical_and(np.less_equal(energy_thld[0:event_count], cutoff),
+                                              np.greater_equal(energy_thld[0:event_count], 40))
 
-    True_positive = np.logical_and(Full_event_photopeak, estimation_photopeak[0:event_collection.qty_of_events])
-    True_negative = np.logical_and(np.logical_not(Full_event_photopeak), np.logical_not(estimation_photopeak[0:event_collection.qty_of_events]))
+        True_positive = np.logical_and(Full_event_photopeak, estimation_photopeak[0:event_collection.qty_of_events])
+        True_negative = np.logical_and(np.logical_not(Full_event_photopeak), np.logical_not(estimation_photopeak[0:event_collection.qty_of_events]))
 
-    False_positive = np.logical_and(np.logical_not(Full_event_photopeak), estimation_photopeak[0:event_collection.qty_of_events])
-    False_negative = np.logical_and(Full_event_photopeak, np.logical_not(estimation_photopeak[0:event_collection.qty_of_events]))
+        False_positive = np.logical_and(np.logical_not(Full_event_photopeak), estimation_photopeak[0:event_collection.qty_of_events])
+        False_negative = np.logical_and(Full_event_photopeak, np.logical_not(estimation_photopeak[0:event_collection.qty_of_events]))
 
-    print(np.count_nonzero(True_positive), np.count_nonzero(True_negative),
-          np.count_nonzero(False_positive), np.count_nonzero(False_negative))
+        true_positive_count[i] = np.count_nonzero(True_positive)
+        true_negative_count[i] = np.count_nonzero(True_negative)
+        false_positive_count[i] = np.count_nonzero(False_positive)
+        false_negative_count[i] = np.count_nonzero(False_negative)
+        success[i] = (np.count_nonzero(True_positive)+np.count_nonzero(True_negative)) / float(event_collection.qty_of_events)
 
-    print(np.count_nonzero(True_positive)+np.count_nonzero(True_negative),
-          np.count_nonzero(False_negative)+np.count_nonzero(False_positive))
+        print("#### The agreement results for photon #{0} are : ####".format(mip))
+        print("True positive : {0}    True negative: {1}".format(true_positive_count[i], true_negative_count[i]))
+        print("False positive : {0}   False negative: {1}".format(false_positive_count[i], false_negative_count[i]))
 
-    plt.figure(0)
-    index = np.logical_or(True_positive, True_negative)
-    ETT = energy_thld[index]
-    index = np.logical_or(False_positive, False_negative)
-    ETTF = energy_thld[index]
-    plt.hist([ETT, ETTF], 128, stacked=True, color=['blue', 'red'])
-    plt.axvline(bins[cutoff_bin], color='green', linestyle = 'dashed', linewidth=2)
-    plt.xlabel('Arrival time of 64th photon (ps)')
-    plt.xlim([50, 100])
-    plt.ylabel('Counts')
+        print("For an agreement of {0:02.2%}\n".format(success[i]))
+
+        f, (ax1, ax2) = plt.subplots(2)
+        index = np.logical_or(True_positive, True_negative)
+        ETT = energy_thld[index]
+        index = np.logical_or(False_positive, False_negative)
+        ETTF = energy_thld[index]
+        ax1.hist([ETT, ETTF], 128, stacked=True, color=['blue', 'red'])
+        ax1.axvline(bins[cutoff_bin], color='green', linestyle = 'dashed', linewidth=2)
+        ax1.set_xlabel('Arrival time of 64th photon (ps)')
+        ax1.set_xlim([50, 80])
+        ax1.set_ylabel('Counts')
+        ax1.text(65, 400, '{0:02.2%} agreement'.format(success[i]))
+        ax1.set_title('Energy based on photon #{0}'.format(mip))
+
+        index = np.logical_or(True_positive, True_negative)
+        ETT = event_collection.qty_spad_triggered[index]
+        index = np.logical_or(False_positive, False_negative)
+        ETTF = event_collection.qty_spad_triggered[index]
+        ax2.hist([ETT, ETTF], 75, stacked=True, color=['blue', 'red'])
+        ax2.set_xlabel('Total number of SPADs triggered')
+        ax2.set_ylabel('Counts')
+
+        f.set_size_inches(10, 12)
+
 
     plt.figure(50)
-    index = np.logical_or(True_positive, True_negative)
-    ETT = event_collection.qty_spad_triggered[index]
-    index = np.logical_or(False_positive, False_negative)
-    ETTF = event_collection.qty_spad_triggered[index]
-    plt.hist([ETT, ETTF], 96, stacked=True, color=['blue', 'red'])
-    plt.xlabel('Total number of SPADs triggered')
-    plt.ylabel('Counts')
-
+    plt.plot(mips, success)
+    plt.xlabel("Photon selected for energy estimation")
+    plt.ylabel("Agreement with classical method")
     # Timing algorithm check
     max_single_photon = 8
     max_BLUE = 10
