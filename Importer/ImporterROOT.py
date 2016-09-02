@@ -20,7 +20,7 @@ class ImporterRoot:
         self.file = TFile(filename)
         self.tree = self.file.Get('tree')
 
-    def import_all_spad_events(self, number_of_events, start=0):
+    def import_all_spad_events(self, number_of_events=0, start=0):
         # This loads the entry in tree
         if number_of_events == 0:
             number_of_events = self.tree.GetEntries()-start
@@ -57,6 +57,27 @@ class ImporterRoot:
         return CEventCollection(event_ID[0:valid_event_count], global_time[0:valid_event_count],
                                 spad_trigger_count[0:valid_event_count], trigger_type[0:valid_event_count],
                                 pixel_x_coord[0:valid_event_count], pixel_y_coord[0:valid_event_count])
+
+    def import_true_energy(self, number_of_events=0, start=0):
+        if number_of_events == 0:
+            number_of_events = self.tree.GetEntries()-start
+
+        max_elements = 128
+        event_ID = np.zeros(number_of_events)
+        true_energy = np.zeros(number_of_events)
+        valid_event_count = 0
+        for event_id in range(start, number_of_events+start):
+            self.tree.GetEntry(event_id)
+            test_global_time = np.array(self.tree.GlobalTime[:])
+            if np.size(test_global_time) > 100000 or np.size(test_global_time)< max_elements:
+                continue
+
+            event_ID[valid_event_count] = self.tree.Event
+            true_energy[valid_event_count] = self.tree.totalEnergyDeposited
+            valid_event_count += 1
+
+        valid_event_count -= 1
+        return event_ID[0:valid_event_count], true_energy[0:valid_event_count]
 
     def close_file(self):
         self.file.Close()
