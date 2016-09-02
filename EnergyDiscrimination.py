@@ -10,6 +10,8 @@ import numpy as np
 import matplotlib
 import copy
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+import scipy.stats as st
 
 ## Importers
 from Importer.ImporterROOT import ImporterRoot
@@ -22,6 +24,33 @@ from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
 from DarkCountDiscriminator import DiscriminatorWindowDensity
 from DarkCountDiscriminator import DiscriminatorDualWindow
 from DarkCountDiscriminator import DiscriminatorMultiWindow
+
+
+def gaussian(x, mean, variance, A):
+    gain = 1 / (variance * np.sqrt(2*np.pi))
+    exponent = np.power((x - mean), 2) / (2 * np.power(variance, 2))
+    return A * gain * np.exp(-1*exponent)
+
+
+def find_energy_threshold(bins, hist, percentile = 95):
+    max_index = np.argmax(hist)
+    end_index = 2*max_index
+    popt, pcov = curve_fit(gaussian, bins[0:end_index], hist[0:end_index],
+                           p0=(bins[max_index], 50, hist[max_index]))
+    if popt[0] < 0:
+        raise ValueError('Energy fit failed, peak position cannot be negative')
+
+    photopeak_mean = popt[0]
+    photopeak_sigma = popt[1]
+    photopeak_amplitude = popt[2]
+
+    z = st.norm.ppf(percentile/100.0)
+    threshold = photopeak_mean+z*photopeak_sigma
+    print(z, threshold)
+
+    threshold_bin = np.argwhere(bins>threshold)[0]
+    return threshold, threshold_bin
+
 
 def run_timing_algorithm(algorithm, event_collection):
 
@@ -119,18 +148,8 @@ def main_loop():
 
         bins = bin_edges[0:-1]+((bin_edges[1]-bin_edges[0])/2)
 
-        dd_hist = np.diff(hist, 2)
-        d_hist = np.diff(hist)
+        cutoff, cutoff_bin = find_energy_threshold(bins, hist)
 
-        # plt.figure(1)
-        # plt.plot(bins, hist)
-        # plt.plot(bins[0:-1], np.diff(hist))
-        # plt.plot(bins[1:-1], dd_hist)
-
-        max_peak = np.argmax(hist)
-        max_slope = np.argmin(d_hist[max_peak:2*max_peak])
-        cutoff_bin = int(round(max_peak+3*max_slope))
-        cutoff = bins[cutoff_bin]
         print("Cutoff was set at {0} which is bin {1}". format(cutoff, cutoff_bin))
 
         estimation_photopeak = np.logical_and(np.less_equal(energy_thld[0:event_count], cutoff),
