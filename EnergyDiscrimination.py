@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib
 import copy
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 from scipy.optimize import curve_fit
 import scipy.stats as st
 
@@ -91,7 +92,7 @@ def collection_procedure(filename, number_of_events = 0):
 
     # Apply TDC - Must be applied after making the coincidences because the
     # coincidence adds a random time offset to pairs of events
-    tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=25, tdc_jitter_std=15)
+    tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=25, tdc_jitter_std=25)
     tdc.get_sampled_timestamps(coincidence_collection.detector1)
     tdc.get_sampled_timestamps(coincidence_collection.detector2)
 
@@ -109,20 +110,22 @@ def confusion_matrix(estimation, reference):
 
 
 def main_loop():
-    matplotlib.rc('xtick', labelsize=18)
-    matplotlib.rc('ytick', labelsize=18)
-    matplotlib.rc('legend', fontsize=16)
+    matplotlib.rc('xtick', labelsize=8)
+    matplotlib.rc('ytick', labelsize=8)
+    matplotlib.rc('legend', fontsize=8)
     font = {'family': 'normal',
-            'size': 18}
+            'size': 8}
 
     matplotlib.rc('font', **font)
     arraysize = 1000
     nbins = 128
     energy_thld = np.zeros(50000)
 
-    filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110TW_Baseline.root"
+    pp = PdfPages("/home/cora2406/FirstPhotonEnergy/results/Threshold.pdf")
 
-    event_collection, coincidence_collection = collection_procedure(filename, 1000)
+    filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110TW_m.root"
+
+    event_collection, coincidence_collection = collection_procedure(filename, 5000)
     high_energy_collection = copy.deepcopy(event_collection)
     low_energy_collection = copy.deepcopy(event_collection)
     low, high = CEnergyDiscrimination.discriminate_by_energy(high_energy_collection, 400, 700)
@@ -131,40 +134,48 @@ def main_loop():
     CEnergyDiscrimination.discriminate_by_energy(low_energy_collection, 0, 400)
     # CEnergyDiscrimination.display_energy_spectrum(low_energy_collection)
 
-    Full_event_photopeak = np.logical_and(np.less_equal(event_collection.qty_spad_triggered, high),
-                                          np.greater_equal(event_collection.qty_spad_triggered, low))
-
     # Grab original energy deposit
-    geant4_filename = "/home/cora2406/FirstPhotonEnergy/events/LYSO1x1x10_TW.root"
+    geant4_filename = "/media/My Passport/Geant4_Scint/LYSO_1x1x10_TW.root"
     importer = ImporterRoot()
     importer.open_root_file(geant4_filename)
-    event_id, true_energy = importer.import_true_energy(2000)
+    event_id, true_energy = importer.import_true_energy(5000)
     importer.close_file()
 
     j = 0
     delete_list = []
+    ref_delete_list = []
     for i in range(0, np.size(event_id)):
         if j >= event_collection.qty_of_events:
             delete_list.append(i)
         elif event_collection.event_id[j] != event_id[i]:
             delete_list.append(i)
-
+            if event_id[i] > event_collection.event_id[j]:
+                ref_delete_list.append(j)
+                j += 1
         else:
             j += 1
 
     event_id = np.delete(event_id, delete_list)
     true_energy = np.delete(true_energy, delete_list)
+    bool_delete_list = np.ones(np.shape(event_collection.event_id), dtype=bool)
+    bool_delete_list[ref_delete_list] = False
+    event_collection.delete_events(bool_delete_list)
 
     if np.shape(event_id)[0] != event_collection.qty_of_events:
         print(np.shape(event_id), event_collection.qty_of_events)
         raise ValueError("The shapes aren't the same.")
 
-    True_event_photopeak = np.logical_and(np.less_equal(true_energy, 700),
-                                          np.greater_equal(true_energy, 400))
+    True_event_photopeak = np.logical_and(np.less_equal(true_energy, 0.7),
+                                          np.greater_equal(true_energy, 0.4))
+
+    Full_event_photopeak = np.logical_and(np.less_equal(event_collection.qty_spad_triggered, high),
+                                          np.greater_equal(event_collection.qty_spad_triggered, low))
     # Energy algorithms testing
 
-    mips = range(10, 100, 5)
-    percentiles = [85, 90, 92.5, 95, 97.5, 98, 99, 99.9]
+    #mips = range(10, 100, 5)
+    mips = range(10, 40, 10)
+    #percentiles = [85, 90, 92.5, 95, 97.5, 98, 99, 99.9]
+    percentiles = [97.5, 98, 99]
     event_count = event_collection.qty_of_events
     true_positive_count = np.zeros((np.size(mips), np.size(percentiles), 2))
     true_negative_count = np.zeros((np.size(mips), np.size(percentiles), 2))
@@ -202,26 +213,26 @@ def main_loop():
 
             print("For an agreement of {0:02.2%}\n".format(success[i, j, 0]))
 
-            f, (ax1, ax2, ax3) = plt.subplots(3)
+            f, (ax1, ax2, ax3, ax4) = plt.subplots(4)
             index = np.logical_or(True_positive, True_negative)
             ETT = energy_thld[index]
             index = np.logical_or(False_positive, False_negative)
             ETTF = energy_thld[index]
             ax1.hist([ETT, ETTF], 128, stacked=True, color=['blue', 'red'])
             ax1.axvline(bins[cutoff_bin], color='green', linestyle='dashed', linewidth=2)
-            ax1.set_xlabel('Arrival time of selected photon (ps)')
+            ax1.set_xlabel('Arrival time of selected photon (ps)', fontsize=8)
             ax1.set_xlim([50, 80])
-            ax1.set_ylabel('Counts')
+            ax1.set_ylabel('Counts', fontsize=8)
             ax1.text(65, 400, '{0:02.2%} agreement'.format(success[i, j, 0]))
-            ax1.set_title('Energy based on photon #{0} for {1}th percentile'.format(mip, percentile))
+            ax1.set_title('Energy based on photon #{0} for {1}th percentile'.format(mip, percentile), fontsize=10)
 
             index = np.logical_or(True_positive, True_negative)
             ETT = event_collection.qty_spad_triggered[index]
             index = np.logical_or(False_positive, False_negative)
             ETTF = event_collection.qty_spad_triggered[index]
             ax2.hist([ETT, ETTF], 75, stacked=True, color=['blue', 'red'])
-            ax2.set_xlabel('Total number of SPADs triggered')
-            ax2.set_ylabel('Counts')
+            ax2.set_xlabel('Total number of SPADs triggered', fontsize=8)
+            ax2.set_ylabel('Counts', fontsize=8)
 
             True_positive, True_negative, False_positive, False_negative = \
                 confusion_matrix(estimation_photopeak, True_event_photopeak)
@@ -242,17 +253,41 @@ def main_loop():
             ETT = true_energy[index]
             index = np.logical_or(False_positive, False_negative)
             ETTF = true_energy[index]
+            ax3.set_yscale("log")
             ax3.hist([ETT, ETTF], 75, stacked=True, color=['blue', 'red'])
-            ax3.set_xlabel('Total energy deposited')
-            ax3.set_ylabel('Counts')
+            # ax3.set_xlabel('Total energy deposited', fontsize=10)
+            ax3.set_ylabel('Counts', fontsize=8)
 
-            f.set_size_inches(6, 8)
+            f.set_size_inches(4, 6)
+
+            columns = ('True', 'False')
+            rows = ('Classic_Positive', 'Classic_Negative', 'Deposited_Positive','Deposited_Negative')
+            cell_text = ([true_positive_count[i, j, 0], false_positive_count[i, j, 0]],
+                         [true_negative_count[i, j, 0], false_negative_count[i, j, 0]],
+                         [true_positive_count[i, j, 1], false_positive_count[i, j, 1]],
+                         [true_negative_count[i, j, 1], false_negative_count[i, j, 1]])
+
+            ax4.axis('tight')
+            ax4.axis('off')
+            ax4.table(cellText=cell_text, rowLabels=rows, colWidths=[0.2, 0.2], colLabels=columns, loc='center', fontsize=8)
+            plt.subplots_adjust(left=0.2, bottom=0.2)
+
+            f.savefig(pp, format="pdf")
 
     plt.figure()
-    plt.plot(mips, success)
+    plt.plot(mips, success[:,:,0])
     plt.legend(percentiles, loc=4)
     plt.xlabel("Photon selected for energy estimation")
     plt.ylabel("Agreement with classical method")
+
+    pp.savefig()
+
+    plt.figure()
+    plt.plot(mips, success[:,:,1])
+    plt.legend(percentiles, loc=4)
+    plt.xlabel("Photon selected for energy estimation")
+    plt.ylabel("Agreement with energy deposited")
+    pp.savefig()
     # Timing algorithm check
     max_single_photon = 8
     max_BLUE = 10
@@ -277,6 +312,8 @@ def main_loop():
         algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=p)
         tr_BLUE_fwhm[p - 2] = run_timing_algorithm(algorithm, coincidence_collection)
 
+    pp.close()
+
 
 main_loop()
-plt.show()
+#plt.show()

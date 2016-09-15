@@ -63,7 +63,8 @@ class ImporterRoot:
             number_of_events = self.tree.GetEntries()-start
 
         max_elements = 128
-        event_ID = np.zeros(number_of_events)
+        true_event_id = np.zeros(number_of_events)
+        ordered_event_id = np.zeros(number_of_events)
         true_energy = np.zeros(number_of_events)
         valid_event_count = 0
         for event_id in range(start, number_of_events+start):
@@ -72,12 +73,13 @@ class ImporterRoot:
             if np.size(test_global_time) > 100000 or np.size(test_global_time)< max_elements:
                 continue
 
-            event_ID[valid_event_count] = self.tree.Event
+            true_event_id[valid_event_count] = self.tree.Event
+            ordered_event_id[valid_event_count] = event_id
             true_energy[valid_event_count] = self.tree.totalEnergyDeposited
             valid_event_count += 1
 
         valid_event_count -= 1
-        return event_ID[0:valid_event_count], true_energy[0:valid_event_count]
+        return ordered_event_id[0:valid_event_count], true_energy[0:valid_event_count]
 
     def close_file(self):
         self.file.Close()
