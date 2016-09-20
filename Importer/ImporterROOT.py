@@ -43,7 +43,7 @@ class ImporterRoot:
             if np.size(test_global_time) > 100000 or np.size(test_global_time)< max_elements:
                 continue
 
-            global_time[valid_event_count, :] = test_global_time[0:max_elements]
+            global_time[valid_event_count, :] = test_global_time[0:max_elements]*1000
             pixel_x_coord[valid_event_count, :] = np.array(self.tree.SpadX[0:max_elements])
             pixel_y_coord[valid_event_count, :] = np.array(self.tree.SpadY[0:max_elements])
             trigger_type[valid_event_count, :] = np.array(self.tree.TriggerType[0:max_elements])
@@ -64,6 +64,7 @@ class ImporterRoot:
 
         max_elements = 128
         true_event_id = np.zeros(number_of_events)
+        global_time = np.zeros((number_of_events, 128))
         ordered_event_id = np.zeros(number_of_events)
         true_energy = np.zeros(number_of_events)
         valid_event_count = 0
@@ -73,6 +74,8 @@ class ImporterRoot:
             if np.size(test_global_time) > 100000 or np.size(test_global_time)< max_elements:
                 continue
 
+            test_global_time = np.sort(test_global_time)
+            global_time[valid_event_count, :] = test_global_time[0:128]
             true_event_id[valid_event_count] = self.tree.Event
             ordered_event_id[valid_event_count] = event_id
             true_energy[valid_event_count] = self.tree.totalEnergyDeposited

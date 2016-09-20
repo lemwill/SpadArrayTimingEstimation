@@ -36,8 +36,15 @@ def gaussian(x, mean, variance, A):
 def find_energy_threshold(bins, hist, percentile=95):
     max_index = np.argmax(hist)
     end_index = 2 * max_index
-    popt, pcov = curve_fit(gaussian, bins[0:end_index], hist[0:end_index],
-                           p0=(bins[max_index], 50, hist[max_index]))
+    try:
+        popt, pcov = curve_fit(gaussian, bins[0:end_index], hist[0:end_index],
+                                p0=(bins[max_index], 50, hist[max_index]))
+    except TypeError:
+        max_index = max_index+1
+        end_index = 2 * max_index
+        popt, pcov = curve_fit(gaussian, bins[0:end_index], hist[0:end_index],
+                                p0=(bins[max_index], 50, hist[max_index]))
+
     if popt[0] < 0:
         raise ValueError('Energy fit failed, peak position cannot be negative')
 
@@ -92,9 +99,9 @@ def collection_procedure(filename, number_of_events = 0):
 
     # Apply TDC - Must be applied after making the coincidences because the
     # coincidence adds a random time offset to pairs of events
-    tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=25, tdc_jitter_std=25)
-    tdc.get_sampled_timestamps(coincidence_collection.detector1)
-    tdc.get_sampled_timestamps(coincidence_collection.detector2)
+    #tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=0, tdc_jitter_std=0)
+    #tdc.get_sampled_timestamps(coincidence_collection.detector1)
+    #tdc.get_sampled_timestamps(coincidence_collection.detector2)
 
     return event_collection, coincidence_collection
 
@@ -123,22 +130,50 @@ def main_loop():
 
     pp = PdfPages("/home/cora2406/FirstPhotonEnergy/results/Threshold.pdf")
 
-    filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110TW_m.root"
+    filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW_test.root"
 
-    event_collection, coincidence_collection = collection_procedure(filename, 5000)
+    event_collection, coincidence_collection = collection_procedure(filename, 50000)
     high_energy_collection = copy.deepcopy(event_collection)
     low_energy_collection = copy.deepcopy(event_collection)
     low, high = CEnergyDiscrimination.discriminate_by_energy(high_energy_collection, 400, 700)
+    coincidence_collection = CCoincidenceCollection(high_energy_collection)
     # CEnergyDiscrimination.display_energy_spectrum(high_energy_collection)
 
     CEnergyDiscrimination.discriminate_by_energy(low_energy_collection, 0, 400)
     # CEnergyDiscrimination.display_energy_spectrum(low_energy_collection)
 
+    # Timing algorithm check
+    max_single_photon = 8
+    max_BLUE = 10
+
+    tr_sp_fwhm = np.zeros(max_single_photon)
+    tr_BLUE_fwhm = np.zeros(max_BLUE)
+
+    if (max_single_photon > event_collection.qty_of_photons):
+        max_single_photon = event_collection.qty_of_photons
+
+    print "\n### Calculating time resolution for different algorithms ###"
+
+    # plt.figure(1)
+    # plt.hist(event_collection.trigger_type.flatten())
+
+    # Running timing algorithms ------------------------------------------------
+    for p in range(1, max_single_photon):
+        algorithm = CAlgorithmSinglePhoton(photon_count=p)
+        tr_sp_fwhm[p - 1] = run_timing_algorithm(algorithm, coincidence_collection)
+
+    if (max_BLUE > event_collection.qty_of_photons):
+        max_BLUE = event_collection.qty_of_photons
+
+    for p in range(2, max_BLUE):
+        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=p)
+        tr_BLUE_fwhm[p - 2] = run_timing_algorithm(algorithm, coincidence_collection)
+
     # Grab original energy deposit
     geant4_filename = "/media/My Passport/Geant4_Scint/LYSO_1x1x10_TW.root"
     importer = ImporterRoot()
     importer.open_root_file(geant4_filename)
-    event_id, true_energy = importer.import_true_energy(5000)
+    event_id, true_energy = importer.import_true_energy(50000)
     importer.close_file()
 
     j = 0
@@ -172,10 +207,10 @@ def main_loop():
                                           np.greater_equal(event_collection.qty_spad_triggered, low))
     # Energy algorithms testing
 
-    #mips = range(10, 100, 5)
-    mips = range(10, 40, 10)
-    #percentiles = [85, 90, 92.5, 95, 97.5, 98, 99, 99.9]
-    percentiles = [97.5, 98, 99]
+    mips = range(10, 100, 5)
+    #mips = range(10, 70, 20)
+    percentiles = [85, 90, 92.5, 95, 97.5, 98, 99, 99.9]
+    #percentiles = [97.5, 98, 99]
     event_count = event_collection.qty_of_events
     true_positive_count = np.zeros((np.size(mips), np.size(percentiles), 2))
     true_negative_count = np.zeros((np.size(mips), np.size(percentiles), 2))
@@ -214,6 +249,7 @@ def main_loop():
             print("For an agreement of {0:02.2%}\n".format(success[i, j, 0]))
 
             f, (ax1, ax2, ax3, ax4) = plt.subplots(4)
+            f.subplots_adjust(hspace=0.5)
             index = np.logical_or(True_positive, True_negative)
             ETT = energy_thld[index]
             index = np.logical_or(False_positive, False_negative)
@@ -221,9 +257,12 @@ def main_loop():
             ax1.hist([ETT, ETTF], 128, stacked=True, color=['blue', 'red'])
             ax1.axvline(bins[cutoff_bin], color='green', linestyle='dashed', linewidth=2)
             ax1.set_xlabel('Arrival time of selected photon (ps)', fontsize=8)
-            ax1.set_xlim([50, 80])
+            x_max_lim = 1000 * round(np.max(energy_thld)/1000)+2000
+            ax1.set_xlim([50000, x_max_lim])
             ax1.set_ylabel('Counts', fontsize=8)
-            ax1.text(65, 400, '{0:02.2%} agreement'.format(success[i, j, 0]))
+            x_legend_position = 2*(x_max_lim-50000)/3
+            y_legend_position = ax1.get_ylim()[1]/2
+            ax1.text(x_legend_position, y_legend_position, '{0:02.2%} agreement'.format(success[i, j, 0]))
             ax1.set_title('Energy based on photon #{0} for {1}th percentile'.format(mip, percentile), fontsize=10)
 
             index = np.logical_or(True_positive, True_negative)
@@ -234,6 +273,11 @@ def main_loop():
             ax2.set_xlabel('Total number of SPADs triggered', fontsize=8)
             ax2.set_ylabel('Counts', fontsize=8)
 
+
+            print "\n### Calculating time resolution for different algorithms ###"
+
+            # plt.figure(1)
+            # plt.hist(event_collection.trigger_type.flatten())
             True_positive, True_negative, False_positive, False_negative = \
                 confusion_matrix(estimation_photopeak, True_event_photopeak)
 
@@ -255,13 +299,13 @@ def main_loop():
             ETTF = true_energy[index]
             ax3.set_yscale("log")
             ax3.hist([ETT, ETTF], 75, stacked=True, color=['blue', 'red'])
-            # ax3.set_xlabel('Total energy deposited', fontsize=10)
+            ax3.set_xlabel('Total energy deposited', fontsize=8)
             ax3.set_ylabel('Counts', fontsize=8)
 
             f.set_size_inches(4, 6)
 
             columns = ('True', 'False')
-            rows = ('Classic_Positive', 'Classic_Negative', 'Deposited_Positive','Deposited_Negative')
+            rows = ('Integral_Pos', 'Integral_Neg', 'Deposited_Pos','Deposited_Neg')
             cell_text = ([true_positive_count[i, j, 0], false_positive_count[i, j, 0]],
                          [true_negative_count[i, j, 0], false_negative_count[i, j, 0]],
                          [true_positive_count[i, j, 1], false_positive_count[i, j, 1]],
@@ -269,51 +313,29 @@ def main_loop():
 
             ax4.axis('tight')
             ax4.axis('off')
-            ax4.table(cellText=cell_text, rowLabels=rows, colWidths=[0.2, 0.2], colLabels=columns, loc='center', fontsize=8)
-            plt.subplots_adjust(left=0.2, bottom=0.2)
+            ax4.table(cellText=cell_text, rowLabels=rows, colWidths=[0.3, 0.3], colLabels=columns, loc='center', fontsize=8)
+            plt.subplots_adjust(left=0.2, bottom=0.05)
 
             f.savefig(pp, format="pdf")
 
-    plt.figure()
-    plt.plot(mips, success[:,:,0])
-    plt.legend(percentiles, loc=4)
-    plt.xlabel("Photon selected for energy estimation")
-    plt.ylabel("Agreement with classical method")
+        plt.figure()
+        plt.plot(mips, success[:,:,0])
+        plt.legend(percentiles, loc=4)
+        plt.xlabel("Photon selected for energy estimation")
+        plt.ylabel("Agreement with classical method")
 
-    pp.savefig()
+        pp.savefig()
 
-    plt.figure()
-    plt.plot(mips, success[:,:,1])
-    plt.legend(percentiles, loc=4)
-    plt.xlabel("Photon selected for energy estimation")
-    plt.ylabel("Agreement with energy deposited")
-    pp.savefig()
-    # Timing algorithm check
-    max_single_photon = 8
-    max_BLUE = 10
+        plt.figure()
+        plt.plot(mips, success[:,:,1])
+        plt.legend(percentiles, loc=4)
+        plt.xlabel("Photon selected for energy estimation")
+        plt.ylabel("Agreement with energy deposited")
+        pp.savefig()
 
-    tr_sp_fwhm = np.zeros(max_single_photon)
-    tr_BLUE_fwhm = np.zeros(max_BLUE)
 
-    if (max_single_photon > event_collection.qty_of_photons):
-        max_single_photon = event_collection.qty_of_photons
-
-    print "\n### Calculating time resolution for different algorithms ###"
-
-    # Running timing algorithms ------------------------------------------------
-    for p in range(1, max_single_photon):
-        algorithm = CAlgorithmSinglePhoton(photon_count=p)
-        tr_sp_fwhm[p - 1] = run_timing_algorithm(algorithm, coincidence_collection)
-
-    if (max_BLUE > event_collection.qty_of_photons):
-        max_BLUE = event_collection.qty_of_photons
-
-    for p in range(2, max_BLUE):
-        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=p)
-        tr_BLUE_fwhm[p - 2] = run_timing_algorithm(algorithm, coincidence_collection)
 
     pp.close()
 
 
 main_loop()
-#plt.show()
