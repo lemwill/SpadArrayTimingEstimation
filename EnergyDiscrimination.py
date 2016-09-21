@@ -35,18 +35,10 @@ def gaussian(x, mean, variance, A):
 
 def find_energy_threshold(bins, hist, percentile=95):
     max_index = np.argmax(hist)
-    end_index = 2 * max_index
-    try:
-        popt, pcov = curve_fit(gaussian, bins[0:end_index], hist[0:end_index],
-                                p0=(bins[max_index], 50, hist[max_index]))
-    except TypeError:
-        max_index = max_index+1
-        end_index = 2 * max_index
-        popt, pcov = curve_fit(gaussian, bins[0:end_index], hist[0:end_index],
-                                p0=(bins[max_index], 50, hist[max_index]))
+    end_index = 2 * max_index + 1
 
-    if popt[0] < 0:
-        raise ValueError('Energy fit failed, peak position cannot be negative')
+    popt, pcov = curve_fit(gaussian, bins[0:end_index], hist[0:end_index],
+                           p0=(bins[max_index], 50, hist[max_index]))
 
     photopeak_mean = popt[0]
     photopeak_sigma = popt[1]
@@ -125,7 +117,7 @@ def main_loop():
 
     matplotlib.rc('font', **font)
     arraysize = 1000
-    nbins = 128
+    nbins = 2000
     energy_thld = np.zeros(50000)
 
     pp = PdfPages("/home/cora2406/FirstPhotonEnergy/results/Threshold.pdf")
@@ -226,7 +218,11 @@ def main_loop():
         bins = bin_edges[0:-1] + ((bin_edges[1] - bin_edges[0]) / 2)
 
         for j, percentile in enumerate(percentiles):
-            cutoff, cutoff_bin = find_energy_threshold(bins, hist, percentile)
+            try:
+                cutoff, cutoff_bin = find_energy_threshold(bins, hist, percentile)
+            except RuntimeError:
+                print("Could not resolve photopeak")
+                continue
 
             print("Cutoff was set at {0} which is bin {1}".format(cutoff, cutoff_bin))
 
@@ -257,10 +253,10 @@ def main_loop():
             ax1.hist([ETT, ETTF], 128, stacked=True, color=['blue', 'red'])
             ax1.axvline(bins[cutoff_bin], color='green', linestyle='dashed', linewidth=2)
             ax1.set_xlabel('Arrival time of selected photon (ps)', fontsize=8)
-            x_max_lim = 1000 * round(np.max(energy_thld)/1000)+2000
+            x_max_lim = 50000+(round(np.max(energy_thld))-50000)/2
             ax1.set_xlim([50000, x_max_lim])
             ax1.set_ylabel('Counts', fontsize=8)
-            x_legend_position = 2*(x_max_lim-50000)/3
+            x_legend_position = 2*(x_max_lim-50000)/3 + 50000
             y_legend_position = ax1.get_ylim()[1]/2
             ax1.text(x_legend_position, y_legend_position, '{0:02.2%} agreement'.format(success[i, j, 0]))
             ax1.set_title('Energy based on photon #{0} for {1}th percentile'.format(mip, percentile), fontsize=10)
@@ -270,11 +266,9 @@ def main_loop():
             index = np.logical_or(False_positive, False_negative)
             ETTF = event_collection.qty_spad_triggered[index]
             ax2.hist([ETT, ETTF], 75, stacked=True, color=['blue', 'red'])
+            ax2.axvline(low, color='green', linestyle='dashed', linewidth=2)
             ax2.set_xlabel('Total number of SPADs triggered', fontsize=8)
             ax2.set_ylabel('Counts', fontsize=8)
-
-
-            print "\n### Calculating time resolution for different algorithms ###"
 
             # plt.figure(1)
             # plt.hist(event_collection.trigger_type.flatten())
@@ -318,20 +312,20 @@ def main_loop():
 
             f.savefig(pp, format="pdf")
 
-        plt.figure()
-        plt.plot(mips, success[:,:,0])
-        plt.legend(percentiles, loc=4)
-        plt.xlabel("Photon selected for energy estimation")
-        plt.ylabel("Agreement with classical method")
+    plt.figure()
+    plt.plot(mips, success[:,:,0])
+    plt.legend(percentiles, loc=4)
+    plt.xlabel("Photon selected for energy estimation")
+    plt.ylabel("Agreement with classical method")
 
-        pp.savefig()
+    pp.savefig()
 
-        plt.figure()
-        plt.plot(mips, success[:,:,1])
-        plt.legend(percentiles, loc=4)
-        plt.xlabel("Photon selected for energy estimation")
-        plt.ylabel("Agreement with energy deposited")
-        pp.savefig()
+    plt.figure()
+    plt.plot(mips, success[:,:,1])
+    plt.legend(percentiles, loc=4)
+    plt.xlabel("Photon selected for energy estimation")
+    plt.ylabel("Agreement with energy deposited")
+    pp.savefig()
 
 
 
