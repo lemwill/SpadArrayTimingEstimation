@@ -127,7 +127,7 @@ def main_loop():
     event_collection, coincidence_collection = collection_procedure(filename, 50000)
     high_energy_collection = copy.deepcopy(event_collection)
     low_energy_collection = copy.deepcopy(event_collection)
-    low, high = CEnergyDiscrimination.discriminate_by_energy(high_energy_collection, 400, 700)
+    low, high = CEnergyDiscrimination.discriminate_by_energy(high_energy_collection, 475, 700)
     coincidence_collection = CCoincidenceCollection(high_energy_collection)
     # CEnergyDiscrimination.display_energy_spectrum(high_energy_collection)
 
@@ -256,19 +256,9 @@ def main_loop():
             x_max_lim = 50000+(round(np.max(energy_thld))-50000)/2
             ax1.set_xlim([50000, x_max_lim])
             ax1.set_ylabel('Counts', fontsize=8)
-            x_legend_position = 2*(x_max_lim-50000)/3 + 50000
-            y_legend_position = ax1.get_ylim()[1]/2
-            ax1.text(x_legend_position, y_legend_position, '{0:02.2%} agreement'.format(success[i, j, 0]))
             ax1.set_title('Energy based on photon #{0} for {1}th percentile'.format(mip, percentile), fontsize=10)
 
-            index = np.logical_or(True_positive, True_negative)
-            ETT = event_collection.qty_spad_triggered[index]
-            index = np.logical_or(False_positive, False_negative)
-            ETTF = event_collection.qty_spad_triggered[index]
-            ax2.hist([ETT, ETTF], 75, stacked=True, color=['blue', 'red'])
-            ax2.axvline(low, color='green', linestyle='dashed', linewidth=2)
-            ax2.set_xlabel('Total number of SPADs triggered', fontsize=8)
-            ax2.set_ylabel('Counts', fontsize=8)
+
 
             # plt.figure(1)
             # plt.hist(event_collection.trigger_type.flatten())
@@ -288,13 +278,29 @@ def main_loop():
             print("For an agreement of {0:02.2%}\n".format(success[i, j, 1]))
 
             index = np.logical_or(True_positive, True_negative)
-            ETT = true_energy[index]
+            ETT = event_collection.qty_spad_triggered[index]
             index = np.logical_or(False_positive, False_negative)
-            ETTF = true_energy[index]
+            ETTF = event_collection.qty_spad_triggered[index]
+            ax2.hist([ETT, ETTF], 75, stacked=True, color=['blue', 'red'])
+            ax2.axvline(low, color='green', linestyle='dashed', linewidth=2)
+            ax2.set_xlabel('Total number of SPADs triggered', fontsize=8)
+            ax2.set_ylabel('Counts', fontsize=8)
+            x_legend_position = 300
+            y_legend_position = ax2.get_ylim()[1]/2
+            ax2.text(x_legend_position, y_legend_position, '{0:02.2%} agreement'.format(success[i, j, 0]))
+
+            index = np.logical_or(True_positive, True_negative)
+            ETT = 1000*true_energy[index]
+            index = np.logical_or(False_positive, False_negative)
+            ETTF = 1000*true_energy[index]
             ax3.set_yscale("log")
             ax3.hist([ETT, ETTF], 75, stacked=True, color=['blue', 'red'])
-            ax3.set_xlabel('Total energy deposited', fontsize=8)
+            ax3.axvline(400 , color='green', linestyle='dashed', linewidth=2)
+            ax3.set_xlabel('Total energy deposited (keV)', fontsize=8)
             ax3.set_ylabel('Counts', fontsize=8)
+            x_legend_position = 100
+            y_legend_position = ax3.get_ylim()[1]/10
+            ax3.text(x_legend_position, y_legend_position, '{0:02.2%} agreement'.format(success[i, j, 1]))
 
             f.set_size_inches(4, 6)
 
