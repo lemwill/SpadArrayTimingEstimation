@@ -75,7 +75,8 @@ def collection_procedure(filename, number_of_events = 0):
 
     # Filtering of unwanted photon types ------------------------------------
     event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False,
-                                                  remove_crosstalk=False, remove_masked_photons=True)
+                                                  remove_crosstalk=False, remove_masked_photons=True,
+                                                  min_photons = 100)
 
     event_collection.save_for_hardware_simulator()
 
@@ -85,6 +86,7 @@ def collection_procedure(filename, number_of_events = 0):
     # First photon discriminator ---------------------------------------------
     # DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
     DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
+    #event_collection.remove_events_with_fewer_photons(100)
 
     # Making of coincidences -------------------------------------------------
     coincidence_collection = CCoincidenceCollection(event_collection)
@@ -116,15 +118,16 @@ def main_loop():
             'size': 8}
 
     matplotlib.rc('font', **font)
-    arraysize = 1000
-    nbins = 2000
-    energy_thld = np.zeros(50000)
+    nb_events = 50000
+    nbins = 5000
+    energy_thld = np.zeros(nb_events)
 
-    pp = PdfPages("/home/cora2406/FirstPhotonEnergy/results/Threshold.pdf")
+    pp = PdfPages("/home/cora2406/FirstPhotonEnergy/results/Threshold_Relative_LYSO1110_TW_100Hz.pdf")
 
-    filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW_test.root"
+    filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW_100Hz.root"
+    result_file = "/home/cora2406/FirstPhotonEnergy/results/LYSO1110_TW_100Hz.npz"
 
-    event_collection, coincidence_collection = collection_procedure(filename, 50000)
+    event_collection, coincidence_collection = collection_procedure(filename, nb_events)
     high_energy_collection = copy.deepcopy(event_collection)
     low_energy_collection = copy.deepcopy(event_collection)
     low, high = CEnergyDiscrimination.discriminate_by_energy(high_energy_collection, 475, 700)
@@ -165,7 +168,7 @@ def main_loop():
     geant4_filename = "/media/My Passport/Geant4_Scint/LYSO_1x1x10_TW.root"
     importer = ImporterRoot()
     importer.open_root_file(geant4_filename)
-    event_id, true_energy = importer.import_true_energy(50000)
+    event_id, true_energy = importer.import_true_energy(nb_events)
     importer.close_file()
 
     j = 0
@@ -211,9 +214,12 @@ def main_loop():
     success = np.zeros((np.size(mips), np.size(percentiles), 2))
 
     for i, mip in enumerate(mips):
-        energy_thld[0:event_count] = event_collection.timestamps[:, mip]
+        try :
+            energy_thld[0:event_count] = event_collection.timestamps[:, mip] - event_collection.timestamps[:, 0]
+        except IndexError:
+            continue
 
-        [hist, bin_edges] = np.histogram(energy_thld[0:event_count], nbins)
+        [hist, bin_edges] = np.histogram(energy_thld[0:event_count], nbins, range=(np.min(energy_thld), 10000))
 
         bins = bin_edges[0:-1] + ((bin_edges[1] - bin_edges[0]) / 2)
 
@@ -250,11 +256,12 @@ def main_loop():
             ETT = energy_thld[index]
             index = np.logical_or(False_positive, False_negative)
             ETTF = energy_thld[index]
-            ax1.hist([ETT, ETTF], 128, stacked=True, color=['blue', 'red'])
+            ax1.hist([ETT, ETTF], 256, stacked=True, color=['blue', 'red'])
             ax1.axvline(bins[cutoff_bin], color='green', linestyle='dashed', linewidth=2)
             ax1.set_xlabel('Arrival time of selected photon (ps)', fontsize=8)
-            x_max_lim = 50000+(round(np.max(energy_thld))-50000)/2
-            ax1.set_xlim([50000, x_max_lim])
+            x_max_lim = round(np.max(energy_thld))/3
+            # x_max_lim = 10000
+            ax1.set_xlim([0, x_max_lim])
             ax1.set_ylabel('Counts', fontsize=8)
             ax1.set_title('Energy based on photon #{0} for {1}th percentile'.format(mip, percentile), fontsize=10)
 
@@ -315,6 +322,7 @@ def main_loop():
             ax4.axis('off')
             ax4.table(cellText=cell_text, rowLabels=rows, colWidths=[0.3, 0.3], colLabels=columns, loc='center', fontsize=8)
             plt.subplots_adjust(left=0.2, bottom=0.05)
+            #plt.show()
 
             f.savefig(pp, format="pdf")
 
@@ -333,7 +341,10 @@ def main_loop():
     plt.ylabel("Agreement with energy deposited")
     pp.savefig()
 
-
+    np.savez(result_file, mips=mips, percentiles=percentiles, true_positive_count=true_positive_count,
+             true_negative_count=true_negative_count, false_negative_count=false_negative_count,
+             false_positive_count=false_positive_count, Single_Photon_Time_Resolution_FWHM=tr_sp_fwhm,
+             BLUE_Time_Resolution=tr_BLUE_fwhm)
 
     pp.close()
 

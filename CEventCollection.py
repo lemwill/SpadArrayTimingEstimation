@@ -86,12 +86,12 @@ class CEventCollection:
 
         np.savetxt('spad_fired_single_event.txt', np.transpose((self.timestamps[0, :], address[0,:])), fmt='%d ps %d')   # X is an array
 
-
-    def remove_masked_photons(self):
+    def remove_masked_photons(self, qty_photons_to_keep=np.NaN):
 
         # Count the number of useful photons per event
         photon_count = np.ma.count(self.__timestamps, axis=1)
-        qty_photons_to_keep = int(np.floor(np.average(photon_count) -2*np.std(photon_count)))
+        if np.isnan(qty_photons_to_keep):
+            qty_photons_to_keep = int(np.floor(np.average(photon_count) -2*np.std(photon_count)))
 
         if (qty_photons_to_keep <= 0):
             raise ValueError("Quantity of photons to keep is negative, too much variation. Please check your discriminator.")
@@ -121,7 +121,7 @@ class CEventCollection:
 
         print("Events with less than {0} photons have been removed. There are {1} events left".format( qty_photons_to_keep, np.shape(self.__event_id)[0]))
 
-    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True):
+    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True, min_photons = 100):
 
         # Grab the index of values 1, 5, 11 - true, masked and cerenkov
 
@@ -168,7 +168,17 @@ class CEventCollection:
 
         print "\n#### Removing unwanted photon types ####"
 
-        self.remove_masked_photons()
+        self.remove_masked_photons(min_photons)
+
+    def remove_events_with_fewer_photons(self, min_photons):
+
+        photon_count = self.qty_spad_triggered
+        keep_mask = (photon_count >= min_photons)
+
+        # Delete the events without sufficient useful photons
+        self.delete_events(keep_mask)
+
+        print("Events with less than {0} photons have been removed. There are {1} events left".format(min_photons, np.shape(self.__event_id)[0]))
 
     def apply_tdc_sharing(self, pixels_per_tdc_x = 1, pixels_per_tdc_y=1):
 
