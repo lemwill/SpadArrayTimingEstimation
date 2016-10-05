@@ -26,7 +26,7 @@ class ImporterRoot:
             number_of_events = self.tree.GetEntries()-start
 
         #Initialize empty arrays
-        max_elements = 128
+        max_elements = 256
         global_time = np.zeros((number_of_events, max_elements))
         pixel_x_coord = np.zeros((number_of_events, max_elements))
         pixel_y_coord = np.zeros((number_of_events, max_elements))

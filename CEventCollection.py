@@ -94,7 +94,8 @@ class CEventCollection:
             qty_photons_to_keep = int(np.floor(np.average(photon_count) -2*np.std(photon_count)))
 
         if (qty_photons_to_keep <= 0):
-            raise ValueError("Quantity of photons to keep is negative, too much variation. Please check your discriminator.")
+            raise ValueError("Quantity of photons to keep is negative, too much variation. "
+                             "Please check your discriminator.")
 
         keep_mask = (photon_count >= qty_photons_to_keep)
 
@@ -121,7 +122,7 @@ class CEventCollection:
 
         print("Events with less than {0} photons have been removed. There are {1} events left".format( qty_photons_to_keep, np.shape(self.__event_id)[0]))
 
-    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True, min_photons = 100):
+    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True, min_photons=np.NaN):
 
         # Grab the index of values 1, 5, 11 - true, masked and cerenkov
 
@@ -172,7 +173,7 @@ class CEventCollection:
 
     def remove_events_with_fewer_photons(self, min_photons):
 
-        photon_count = self.qty_spad_triggered
+        photon_count = np.ma.count(self.__timestamps, axis=1)
         keep_mask = (photon_count >= min_photons)
 
         # Delete the events without sufficient useful photons

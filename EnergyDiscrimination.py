@@ -61,7 +61,7 @@ def run_timing_algorithm(algorithm, event_collection):
     return results.fetch_fwhm_time_resolution()
 
 
-def collection_procedure(filename, number_of_events = 0):
+def collection_procedure(filename, number_of_events=0, min_photons=np.NaN):
     # File import -----------------------------------------------------------
     importer = ImporterRoot()
     importer.open_root_file(filename)
@@ -75,8 +75,7 @@ def collection_procedure(filename, number_of_events = 0):
 
     # Filtering of unwanted photon types ------------------------------------
     event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False,
-                                                  remove_crosstalk=False, remove_masked_photons=True,
-                                                  min_photons = 100)
+                                                  remove_crosstalk=False, remove_masked_photons=True)
 
     event_collection.save_for_hardware_simulator()
 
@@ -85,7 +84,7 @@ def collection_procedure(filename, number_of_events = 0):
 
     # First photon discriminator ---------------------------------------------
     # DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
-    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
+    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection, min_photons)
     #event_collection.remove_events_with_fewer_photons(100)
 
     # Making of coincidences -------------------------------------------------
@@ -127,7 +126,7 @@ def main_loop():
     filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW_100Hz.root"
     result_file = "/home/cora2406/FirstPhotonEnergy/results/LYSO1110_TW_100Hz.npz"
 
-    event_collection, coincidence_collection = collection_procedure(filename, nb_events)
+    event_collection, coincidence_collection = collection_procedure(filename, nb_events, 100)
     high_energy_collection = copy.deepcopy(event_collection)
     low_energy_collection = copy.deepcopy(event_collection)
     low, high = CEnergyDiscrimination.discriminate_by_energy(high_energy_collection, 475, 700)
@@ -214,9 +213,12 @@ def main_loop():
     success = np.zeros((np.size(mips), np.size(percentiles), 2))
 
     for i, mip in enumerate(mips):
+
+        event_collection.remove_events_with_fewer_photons(mip)
         try :
             energy_thld[0:event_count] = event_collection.timestamps[:, mip] - event_collection.timestamps[:, 0]
         except IndexError:
+            print("Events with not enough photons remain")
             continue
 
         [hist, bin_edges] = np.histogram(energy_thld[0:event_count], nbins, range=(np.min(energy_thld), 10000))
@@ -330,7 +332,7 @@ def main_loop():
     plt.plot(mips, success[:,:,0])
     plt.legend(percentiles, loc=4)
     plt.xlabel("Photon selected for energy estimation")
-    plt.ylabel("Agreement with classical method")
+    plt.ylabel("Agreement with integration method")
 
     pp.savefig()
 
