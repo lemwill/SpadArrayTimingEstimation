@@ -1,10 +1,10 @@
 import numpy as np
 
-def DiscriminatorForwardDelta(event_collection):
+def DiscriminatorForwardDelta(event_collection, delta = 300):
 
     for events in xrange(event_collection.timestamps.shape[0]):
         for photons in xrange(event_collection.timestamps.shape[1]-1):
-            if ((event_collection.timestamps[events, photons+1] - event_collection.timestamps[events, photons]) > 300):
+            if ((event_collection.timestamps[events, photons+1] - event_collection.timestamps[events, photons]) > delta):
                 event_collection.timestamps[events, photons] = np.ma.masked
             else:
                 break

@@ -16,6 +16,7 @@ from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
 
 # Distriminators
 from DarkCountDiscriminator import DiscriminatorMultiWindow
+from DarkCountDiscriminator import DiscriminatorForwardDelta
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -49,7 +50,7 @@ def main_loop():
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
     #event_collection_original.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
 
-    number_of_tests = 20
+    number_of_tests = 25
     number_of_curves = 1
     standard_deviation = np.empty(number_of_tests, dtype=float)
     standard_deviation_corrected = np.empty(number_of_tests, dtype=float)
@@ -72,7 +73,7 @@ def main_loop():
 
 
             # Apply TDC - Must be applied after making the coincidences because the coincidence adds a random time offset to pairs of events
-            tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=500, tdc_resolution=15,  individual_error_std= error_resolution[test_num], tdc_jitter_std=0, jitter_fine_std=2.86)
+            tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=1000, tdc_resolution=15,  tdc_resolution_error_std= error_resolution[test_num], tdc_jitter_std=0, jitter_fine_std=2.86)
             tdc.get_sampled_timestamps(event_collection_copy)
             tdc.get_sampled_timestamps(event_collection_corrected, correct_resolution=True)
 
@@ -100,11 +101,11 @@ def main_loop():
             print standard_deviation_corrected[test_num]
 
         #plt.plot(error_resolution, standard_deviation, label='Common oscillator error (STD): '+str(error_common[curve_num]) + ' ps')
-        plt.plot(error_resolution, standard_deviation, label='No correction')
+        plt.plot(error_resolution, standard_deviation, label='No correction', marker='D')
         plt.plot(error_resolution, standard_deviation_corrected, label='Correction applied')
 
 
-    plt.xlabel('Dispersion of the periods of the slow and fast oscillators of the TDCs (ps STD)')
+    plt.xlabel('TDC resolution variations throughout the array (ps STD)')
     plt.ylabel('Timing resolution (ps STD)')
     #plt.title('Impact of the uniformity of a TDC array on timing performance')
    # plt.hist(histogram.ravel(), bins=64)
