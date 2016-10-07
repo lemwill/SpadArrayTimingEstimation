@@ -14,6 +14,8 @@ from TimingAlgorithms.CAlgorithmBlueDifferential import CAlgorithmBlueDifferenti
 from TimingAlgorithms.CAlgorithmBlueExpectationMaximisation import CAlgorithmBlueExpectationMaximisation
 from TimingAlgorithms.CAlgorithmMean import CAlgorithmMean
 from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
+from TimingAlgorithms.CAlgorithmBlue_TimingProbe import CAlgorithmBlue_TimingProbe
+
 from TimingAlgorithms import cramer_rao
 
 # Distriminators
@@ -23,8 +25,11 @@ from DarkCountDiscriminator import DiscriminatorMultiWindow
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.lines as lines
-
+import matplotlib.mlab as mlab
 import itertools
+from sklearn.neighbors.kde import KernelDensity
+import numpy as np
+
 
 def run_timing_algorithm(algorithm, event_collection):
 
@@ -47,20 +52,48 @@ def main_loop():
     args = parser.parse_args()
 
     # File import --------------------------------------------------------------------------------------------------
+    #event_collection = CImporterEventsDualEnergy.import_data(args.filename, event_count=5000)
+    #event_collection2 = CImporterEventsDualEnergy.import_data(args.filename2, event_count=5000)
+
     event_collection = CImporterEventsDualEnergy.import_data(args.filename)
     event_collection2 = CImporterEventsDualEnergy.import_data(args.filename2)
-
 
     # Energy discrimination ----------------------------------------------------------------------------------------
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)
     CEnergyDiscrimination.discriminate_by_energy(event_collection2, low_threshold_kev=425, high_threshold_kev=700)
 
+
+    #y = np.diff(x)
+    #z = y.flatten()
+    #plt.hist(z, bins='auto')
+    #plt.show()
+
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
-    event_collection2.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
+    event_collection2.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
+
+    nb_of_photons = event_collection.timestamps.shape[1]
+    x = event_collection.timestamps-np.transpose([event_collection.interaction_time]*nb_of_photons)
+    mu = np.mean(x,axis=0)
+    sigma = np.std(x, axis=0)
+
+    for i in range (0, nb_of_photons):
+        plt.hist(x[:,i], bins='auto')
+    plt.show()
+
+    #kde = KernelDensity(kernel='gaussian', bandwidth=0.2).fit(x[:,0])
+    #print kde.score_samples(x)
+    #plt.plot(x[:,0])
+    #plt.plot(kde)
+    #plt.show()
+    x = np.linspace(0, 3000, 10000)
+    for i in range (0, nb_of_photons):
+        plt.plot(x, mlab.normpdf(x, mu[i], sigma[i]))
+    plt.show()
+
+    sdfdf
 
     #event_collection.save_for_hardware_simulator()
-
     # Sharing of TDCs --------------------------------------------------------------------------------------------------
    # event_collection.apply_tdc_sharing( pixels_per_tdc_x=1, pixels_per_tdc_y=1)
    # event_collection.apply_tdc_sharing( pixels_per_tdc_x=1, pixels_per_tdc_y=1)
@@ -132,10 +165,29 @@ def main_loop():
 
     ctr_fwhm_array = np.array([])
     for i in range(2, max_order):
-        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i, training_iterations = 3)
+        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i, training_iterations = 2)
         ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(range(2, max_order), ctr_fwhm_array , label='BLUE iterative - 3 iterations')
+    plt.plot(range(2, max_order), ctr_fwhm_array , label='BLUE iterative - 2 iterations')
+
+    ctr_fwhm_array = np.array([])
+    for i in range(2, max_order):
+        skew = 1
+        algorithm = CAlgorithmBlue_TimingProbe(coincidence_collection, photon_count=i, timing_probe_skew_fwhm=skew)
+        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
+        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(range(2, max_order), ctr_fwhm_array , label='Timing probe - skew (FWHM): ' + str(skew))
+
+
+    ctr_fwhm_array = np.array([])
+    for i in range(2, max_order):
+        skew = 250
+
+        algorithm = CAlgorithmBlue_TimingProbe(coincidence_collection, photon_count=i, timing_probe_skew_fwhm=skew)
+        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
+        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(range(2, max_order), ctr_fwhm_array , label='Timing probe - skew (FWHM): ' + str(skew))
+
 
     #ctr_fwhm_array = np.array([])
    # for i in range(2, max_order):
@@ -145,13 +197,13 @@ def main_loop():
    # plt.plot(ctr_fwhm_array, label='BLUE')
    # marker = markers.next()
 
-    ctr_fwhm_array = np.array([])
+   # ctr_fwhm_array = np.array([])
 
-    for i in range(2, max_order):
-       algorithm = CAlgorithmBlueDifferential(coincidence_collection, photon_count=i)
-       ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
-       ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(range(2, max_order), ctr_fwhm_array , label='BLUE differential', marker='^', markevery=0.05)
+    #for i in range(2, max_order):
+    #   algorithm = CAlgorithmBlueDifferential(coincidence_collection, photon_count=i)
+    #   ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
+    #   ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    #plt.plot(range(2, max_order), ctr_fwhm_array , label='BLUE differential', marker='^', markevery=0.05)
 
 
     plt.axhline(y=cramer_rao_limit, linestyle='dotted', label='Intrinsic limit when knowing\nthe interaction time\n(calculated with the ' + str(max_order) + ' first photons)')
