@@ -18,6 +18,7 @@ from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
 # Distriminators
 from DarkCountDiscriminator import DiscriminatorMultiWindow
 from DarkCountDiscriminator import DiscriminatorDualWindow
+from DarkCountDiscriminator import DiscriminatorForwardDelta
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -48,10 +49,12 @@ def main_loop():
 
     ctr_fwhm_array_single = np.array([])
     ctr_fwhm_array_single_no_noise = np.array([])
+    ctr_fwhm_array_single_no_filter = np.array([])
 
     ctr_fwhm_array_mean = np.array([])
     ctr_fwhm_array_blue_em = np.array([])
     ctr_fwhm_array_blue_em_no_noise = np.array([])
+    ctr_fwhm_array_blue_em_no_filter = np.array([])
 
     ctr_fwhm_array_blue = np.array([])
     ctr_fwhm_array_blue_differential = np.array([])
@@ -83,20 +86,28 @@ def main_loop():
 
 
         # Apply TDC - Must be applied after making the coincidences because the coincidence adds a random time offset to pairs of events
-        tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=500, tdc_resolution=15, jitter_fine_std=2.86)
+        tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=1000, tdc_resolution=15, jitter_fine_std=2.86)
 
         tdc.get_sampled_timestamps(event_collection_copy)
         tdc.get_sampled_timestamps(event_collection_no_noise)
+
+        event_collection_no_filter = copy.deepcopy(event_collection_copy)
+
+
 
         # First photon discriminator -----------------------------------------------------------------------------------
         DiscriminatorMultiWindow.discriminate_event_collection(event_collection_copy)
         #DiscriminatorMultiWindow.discriminate_event_collection(event_collection_no_noise)
 
+        DiscriminatorForwardDelta.DiscriminatorForwardDelta(event_collection_no_filter, delta=4000)
         #DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection_copy)
+
+
 
         # Making of coincidences ---------------------------------------------------------------------------------------
         coincidence_collection = CCoincidenceCollection(event_collection_copy)
         coincidence_collection_no_noise = CCoincidenceCollection(event_collection_no_noise)
+        coincidence_collection_no_filter = CCoincidenceCollection(event_collection_no_filter)
 
 
         # Calculating the number of TDCs
@@ -112,6 +123,9 @@ def main_loop():
 
         if(max_order > coincidence_collection_no_noise.detector1.qty_of_photons):
             max_order = coincidence_collection_no_noise.detector1.qty_of_photons
+
+        if(max_order > coincidence_collection_no_filter.detector1.qty_of_photons):
+            max_order = coincidence_collection_no_filter.detector1.qty_of_photons
 
         print "\n### Calculating time resolution for different algorithms ###"
 
@@ -136,6 +150,14 @@ def main_loop():
 
         ctr_fwhm_array_single_no_noise = np.hstack((ctr_fwhm_array_single_no_noise, np.array(ctr_fwhm_lowest)))
 
+        ctr_fwhm_lowest= 10000
+        for i in range(0, max_order):
+            algorithm = CAlgorithmSinglePhoton(photon_count=i)
+            ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection_no_filter)
+            if( ctr_fwhm_lowest > ctr_fwhm) :
+                ctr_fwhm_lowest = ctr_fwhm
+
+        ctr_fwhm_array_single_no_filter = np.hstack((ctr_fwhm_array_single_no_filter, np.array(ctr_fwhm_lowest)))
         #ctr_fwhm_lowest= 10000
         #for i in range(2, max_order):
         #    algorithm = CAlgorithmMean(photon_count=i+1)
@@ -149,12 +171,16 @@ def main_loop():
             ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
             ctr_fwhm_array_blue_em = np.hstack((ctr_fwhm_array_blue_em, np.array(ctr_fwhm)))
 
-        #if (max_order > 1):
-        #    algorithm = CAlgorithmBlue(coincidence_collection_no_noise, photon_count=i+1)
-        #    ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection_no_noise)
-        #    ctr_fwhm_array_blue_em_no_noise = np.hstack((ctr_fwhm_array_blue_em_no_noise, np.array(ctr_fwhm)))
+        if (max_order > 1):
+            algorithm = CAlgorithmBlue(coincidence_collection_no_noise, photon_count=i+1)
+            ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection_no_noise)
+            ctr_fwhm_array_blue_em_no_noise = np.hstack((ctr_fwhm_array_blue_em_no_noise, np.array(ctr_fwhm)))
 
-        #
+        if (max_order > 1):
+            algorithm = CAlgorithmBlue(coincidence_collection_no_filter, photon_count=i+1)
+            ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection_no_filter)
+            ctr_fwhm_array_blue_em_no_filter = np.hstack((ctr_fwhm_array_blue_em_no_filter, np.array(ctr_fwhm)))
+
        # algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
        # ctr_fwhm =  run_timing_algorithm(algorithm, coincidence_collection)
         #ctr_fwhm_array_blue = np.hstack((ctr_fwhm_array_blue, np.array(ctr_fwhm)))
@@ -163,9 +189,10 @@ def main_loop():
         # ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
         # ctr_fwhm_array_blue_differential = np.hstack((ctr_fwhm_array_blue_differential, np.array(ctr_fwhm)))
 
-    plt.plot(bin_width_error_perc, ctr_fwhm_array_single, label='Nth photon - with dark count', marker='o')
-    plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em, label='BLUE - with dark count', marker='D')
-    plt.plot(bin_width_error_perc, ctr_fwhm_array_single_no_noise, label='Nth photon - without dark count')
+    plt.plot(bin_width_error_perc, ctr_fwhm_array_single_no_noise, label='Without dark count')
+    plt.plot(bin_width_error_perc, ctr_fwhm_array_single, label='With dark count - filter on', marker='o')
+    #plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em, label='BLUE - with dark count', marker='D')
+    plt.plot(bin_width_error_perc, ctr_fwhm_array_single_no_filter, label='With dark count - filter off')
 
     #plt.plot(bin_width_error_perc, ctr_fwhm_array_mean, label='Mean', marker='D')
     #plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em_no_noise, label='BLUE without dark count')
@@ -179,5 +206,21 @@ def main_loop():
     plt.xticks(bin_width_error_perc, bin_width_error_perc.astype(int))
     plt.show()
 
+    plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em_no_noise, label='Without dark count', marker='D')
+    plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em, label='With dark count - filter on', marker='o')
+    #plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em, label='BLUE - with dark count', marker='D')
+    plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em_no_filter, label='With dark count - filter off')
 
+
+    #plt.plot(bin_width_error_perc, ctr_fwhm_array_mean, label='Mean', marker='D')
+    #plt.plot(bin_width_error_perc, ctr_fwhm_array_blue_em_no_noise, label='BLUE without dark count')
+
+    # plt.plot(bin_width_error_perc*100, ctr_fwhm_array_blue_differential, label='BLUE Differential')
+    plt.xlabel('Number of TDCs in a 484 SPAD array')
+    plt.ylabel('Coincidence timing resolution (ps)')
+    #plt.title('Impact of sharing TDC for \nmultiple SPADs on coincidence timing resolution')
+    plt.xscale('log')
+    plt.legend()
+    plt.xticks(bin_width_error_perc, bin_width_error_perc.astype(int))
+    plt.show()
 main_loop()

@@ -22,13 +22,6 @@ def main_loop():
     tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=700, tdc_resolution=16,  common_error_std = 0, individual_error_std = 0, tdc_jitter_std=16, jitter_fine_std=2.87)
     tdc.get_coarse_and_fine_resolution()
 
-
-
-
-
-
-
-
     #plt.hist(histogram_tdc, bins=200, range=(1,4000))
     #plt.show()
 
