@@ -125,7 +125,7 @@ class CTdc:
 
         plt.show()
 
-    def get_coarse_and_fine_resolution(self, event_number=1000000):
+    def get_coarse_and_fine_resolution(self, event_number=100000):
 
         code_density, coarse_counter, fine_counter = self.get_code_density(event_number=event_number)
         sum_code_density = np.sum(code_density)
@@ -167,7 +167,10 @@ class CTdc:
                     #coarse_periods[x][y] = 510
                     #fine_periods[x][y] = 15
 
-                    new_timestamps = current_global*self.system_clock_period_ps + current_coarse*self.coarse_periods[x][y] + current_fine*self.fine_periods[x][y]
+                    coarse_period = np.round(self.coarse_periods[x][y], decimals=1)
+                    fine_period = np.round(self.fine_periods[x][y], decimals=1)
+
+                    new_timestamps = current_global*self.system_clock_period_ps + current_coarse*coarse_period + current_fine*fine_period
                     timestamps[np.logical_and(event_collection.pixel_x_coord==x, event_collection.pixel_y_coord==y)] = new_timestamps
                     #timestamps = np.append(timestamps, new_timestamps)
 
@@ -200,8 +203,8 @@ class CTdc:
                 #self.coarse_periods[x][y] = np.round(self.coarse_periods[x][y])
                 #self.fine_periods[x][y] = np.round(self.fine_periods[x][y])
 
-        print self.coarse_periods
-        print self.fine_periods
+        #print self.coarse_periods
+        #print self.fine_periods
         return self.coarse_periods, self.fine_periods
 
     def calculate_tdc_resolutions_with_errors(self, number_of_tdcs):
@@ -240,9 +243,9 @@ class CTdc:
 
         # Add a random offset
         if(self.tdc_jitter_std > 0):
-            event_collection.timestamps[:, :] = event_collection.timestamps + np.random.normal(0, self.tdc_jitter_std, event_collection.timestamps.shape)
+            event_collection.timestamps  = event_collection.timestamps + np.random.normal(0, self.tdc_jitter_std, event_collection.timestamps.shape)
         else:
-            event_collection.timestamps[:, :] = event_collection.timestamps
+            event_collection.timestamps = event_collection.timestamps
 
         # Sample the global counter
         global_counter = event_collection.timestamps / self.system_clock_period_ps

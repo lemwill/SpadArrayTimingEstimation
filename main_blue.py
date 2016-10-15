@@ -7,6 +7,7 @@ from Preprocessing.CTdc import CTdc
 
 ## Importers
 from Importer import CImporterEventsDualEnergy
+from Importer.ImporterRoot import ImporterRoot
 
 ## Algorithms
 from TimingAlgorithms.CAlgorithmBlue import CAlgorithmBlue
@@ -47,8 +48,12 @@ def main_loop():
     args = parser.parse_args()
 
     # File import --------------------------------------------------------------------------------------------------
-    event_collection = CImporterEventsDualEnergy.import_data(args.filename)
-    event_collection2 = CImporterEventsDualEnergy.import_data(args.filename2)
+    #event_collection = CImporterEventsDualEnergy.import_data(args.filename)
+    #event_collection2 = CImporterEventsDualEnergy.import_data(args.filename2)
+
+    importer = ImporterRoot()
+    event_collection = importer.import_data(args.filename, event_count=10000)
+    event_collection2 = importer.import_data(args.filename, event_count=10000)
 
 
     # Energy discrimination ----------------------------------------------------------------------------------------
@@ -56,8 +61,8 @@ def main_loop():
     CEnergyDiscrimination.discriminate_by_energy(event_collection2, low_threshold_kev=425, high_threshold_kev=700)
 
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
-    event_collection2.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
+    event_collection2.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
 
     #event_collection.save_for_hardware_simulator()
 
@@ -85,7 +90,7 @@ def main_loop():
 
     #coincidence_collection = CCoincidenceCollection(event_collection, event_collection2)
 
-    max_order = 128
+    max_order = 32
     ctr_fwhm_array = np.array([])
 
     if(max_order > coincidence_collection.qty_of_photons):
@@ -96,7 +101,7 @@ def main_loop():
 
     print "\n### Calculating time resolution for different algorithms ###"
 
-    cramer_rao_limit = cramer_rao.get_intrinsic_limit(coincidence_collection, photon_count=max_order)
+    #cramer_rao_limit = cramer_rao.get_intrinsic_limit(coincidence_collection, photon_count=max_order)
 
     # Running timing algorithms ------------------------------------------------------------------------------------
     ctr_fwhm_array = np.array([])
@@ -113,7 +118,7 @@ def main_loop():
         algorithm = CAlgorithmSinglePhoton(photon_count=i)
         ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(ctr_fwhm_array, label='Nth photon', marker='o', markevery=0.06)
+    plt.plot(range(1, max_order), ctr_fwhm_array, label='Nth photon', marker='o', markevery=0.06)
 
    # ctr_fwhm_array = np.array([])
    # for i in range(1, max_order):
@@ -124,18 +129,18 @@ def main_loop():
    # marker = markers.next()
 
     ctr_fwhm_array = np.array([])
-    for i in range(2, max_order):
-        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i, training_iterations = 1)
+    for i in range(1, max_order):
+        algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
         ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(ctr_fwhm_array , label='BLUE EM - 1 iteration', marker='D', markevery=0.04)
+    plt.plot(range(1, max_order), ctr_fwhm_array , label='BLUE', marker='D', markevery=0.04)
 
-    ctr_fwhm_array = np.array([])
-    for i in range(2, max_order):
-        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i, training_iterations = 3)
-        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
-        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(ctr_fwhm_array , label='BLUE EM - 3 iterations')
+    #ctr_fwhm_array = np.array([])
+    #for i in range(2, max_order):
+     #   algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=i, training_iterations = 3)
+    #    ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
+    #    ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    #plt.plot(ctr_fwhm_array , label='BLUE EM - 3 iterations')
 
     #ctr_fwhm_array = np.array([])
     #for i in range(2, max_order):
@@ -145,18 +150,18 @@ def main_loop():
     #plt.plot(ctr_fwhm_array, label='BLUE', marker=marker)
     #marker = markers.next()
 
-    ctr_fwhm_array = np.array([])
-    for i in range(2, max_order):
-       algorithm = CAlgorithmBlueDifferential(coincidence_collection, photon_count=i)
-       ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
-       ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(ctr_fwhm_array , label='BLUE DIFFERENTIAL', marker='^', markevery=0.05)
+    #ctr_fwhm_array = np.array([])
+    #for i in range(2, max_order):
+    #   algorithm = CAlgorithmBlueDifferential(coincidence_collection, photon_count=i)
+    #   ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
+    #   ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    #plt.plot(ctr_fwhm_array , label='BLUE DIFFERENTIAL', marker='^', markevery=0.05)
 
 
-    plt.axhline(y=cramer_rao_limit, linestyle='dotted', label='Cramer Rao limit\n of the photodetector\n(with ' + str(max_order) + ' photons)')
-    plt.xlabel('Number of photons used to estimate the time of interaction.')
-    plt.ylabel('Coincidence timing resolution (ps).')
-    plt.title('Coincidence timing resolution for BLUE\n with different training methods.')
+    #plt.axhline(y=cramer_rao_limit, linestyle='dotted', label='Cramer Rao limit\n of the photodetector\n(with ' + str(max_order) + ' photons)')
+    plt.xlabel('Order of photons used to estimate the time of interaction.')
+    plt.ylabel('Coincidence timing resolution (ps FWHM).')
+    #plt.title('Coincidence timing resolution for BLUE\n with different training methods.')
     plt.legend()
     plt.show()
 

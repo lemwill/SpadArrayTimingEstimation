@@ -13,8 +13,8 @@ class CCoincidenceCollection:
 
     @property
     def qty_of_photons(self):
-        print self.detector1.qty_of_photons
-        print self.detector2.qty_of_photons
+        #print self.detector1.qty_of_photons
+        #print self.detector2.qty_of_photons
         if(self.detector1.qty_of_photons < self.detector2.qty_of_photons):
             return self.detector1.qty_of_photons
         else:

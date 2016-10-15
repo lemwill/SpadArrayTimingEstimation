@@ -19,24 +19,27 @@ class CAlgorithmBlue(CAlgorithmBase):
         return self.__photon_count
 
     def _calculate_coefficients(self):
-        corrected_timestamps = self._training_coincidence_collection.detector2.timestamps[:, :self.photon_count] - self._training_coincidence_collection.detector2.interaction_time[:, None]
-        covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
-        unity = np.ones(self.photon_count)
-        inverse_covariance = np.linalg.inv(covariance)
+        if(self.photon_count > 1):
+            corrected_timestamps = self._training_coincidence_collection.detector2.timestamps[:, :self.photon_count] - self._training_coincidence_collection.detector2.interaction_time[:, None]
+            covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
+            unity = np.ones(self.photon_count)
+            inverse_covariance = np.linalg.inv(covariance)
 
-        w = np.dot(unity, inverse_covariance)
-        n = np.dot(w, unity.T)
+            w = np.dot(unity, inverse_covariance)
+            n = np.dot(w, unity.T)
 
-        self._mlh_coefficients2 = w / n
+            self._mlh_coefficients2 = w / n
 
-        corrected_timestamps = self._training_coincidence_collection.detector1.timestamps[:, :self.photon_count] - self._training_coincidence_collection.detector1.interaction_time[:, None]
-        covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
-        unity = np.ones(self.photon_count)
-        inverse_covariance = np.linalg.inv(covariance)
-        w = np.dot(unity, inverse_covariance)
-        n = np.dot(w, unity.T)
-        self._mlh_coefficients1 = w / n
-
+            corrected_timestamps = self._training_coincidence_collection.detector1.timestamps[:, :self.photon_count] - self._training_coincidence_collection.detector1.interaction_time[:, None]
+            covariance = np.cov(corrected_timestamps[:, :self.photon_count], rowvar=0)
+            unity = np.ones(self.photon_count)
+            inverse_covariance = np.linalg.inv(covariance)
+            w = np.dot(unity, inverse_covariance)
+            n = np.dot(w, unity.T)
+            self._mlh_coefficients1 = w / n
+        else:
+            self._mlh_coefficients1 = [1]
+            self._mlh_coefficients2 = [1]
 
 
     def evaluate_collection_timestamps(self, coincidence_collection):

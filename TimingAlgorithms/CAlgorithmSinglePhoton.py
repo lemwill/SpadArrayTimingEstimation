@@ -17,8 +17,8 @@ class CAlgorithmSinglePhoton(CAlgorithmBase):
         return self.__photon_count
 
     def evaluate_collection_timestamps(self, coincidence_collection):
-        timestamps_detector1 = np.copy(coincidence_collection.detector1.timestamps[:, self.photon_count])
-        timestamps_detector2 = np.copy(coincidence_collection.detector2.timestamps[:, self.photon_count])
+        timestamps_detector1 = np.copy(coincidence_collection.detector1.timestamps[:, self.photon_count-1])
+        timestamps_detector2 = np.copy(coincidence_collection.detector2.timestamps[:, self.photon_count-1])
 
         timing_estimation_results = CTimingEstimationResult(self.algorithm_name, self.photon_count, timestamps_detector1, timestamps_detector2)
         return timing_estimation_results

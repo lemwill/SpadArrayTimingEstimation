@@ -7,6 +7,7 @@ from Preprocessing.CTdc import CTdc
 
 ## Importers
 from Importer import CImporterEventsDualEnergy
+from Importer.ImporterRoot import ImporterRoot
 
 ## Algorithms
 from TimingAlgorithms.CAlgorithmBlue import CAlgorithmBlue
@@ -47,7 +48,6 @@ def main_loop():
     # Parse input
     parser = argparse.ArgumentParser(description='Process data out of the Spad Simulator')
     parser.add_argument("filename", help='The file path of the data to import')
-    parser.add_argument("filename2", help='The file path of the data to import')
 
     args = parser.parse_args()
 
@@ -55,22 +55,34 @@ def main_loop():
     #event_collection = CImporterEventsDualEnergy.import_data(args.filename, event_count=5000)
     #event_collection2 = CImporterEventsDualEnergy.import_data(args.filename2, event_count=5000)
 
-    event_collection = CImporterEventsDualEnergy.import_data(args.filename)
-    event_collection2 = CImporterEventsDualEnergy.import_data(args.filename2)
+
+    #event_collection = CImporterEventsDualEnergy.import_data(args.filename)
+    #event_collection2 = CImporterEventsDualEnergy.import_data(args.filename2)
+
+    #def open_root_file(self, filename):
+    #def import_all_spad_events(self, number_of_events=0, start=0):
+
+    importer = ImporterRoot()
+    event_collection = importer.import_data(args.filename, event_count=10000)
 
     # Energy discrimination ----------------------------------------------------------------------------------------
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)
-    CEnergyDiscrimination.discriminate_by_energy(event_collection2, low_threshold_kev=425, high_threshold_kev=700)
 
-
-    #y = np.diff(x)
-    #z = y.flatten()
-    #plt.hist(z, bins='auto')
-    #plt.show()
 
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
-    event_collection2.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
+
+
+
+    x = np.ma.masked_where(event_collection.timestamps -event_collection.interaction_time[:, None] > 50000, event_collection.timestamps)
+    #x = event_collection.timestamps
+    #x = dark_count
+    y = x[:,1]- x[:,0]
+    #z = y.flatten()
+    plt.hist(y, bins='auto', normed=True)
+    plt.show()
+    sdff
+
 
     nb_of_photons = event_collection.timestamps.shape[1]
     x = event_collection.timestamps-np.transpose([event_collection.interaction_time]*nb_of_photons)
