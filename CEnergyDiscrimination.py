@@ -24,7 +24,8 @@ def fit_photopeak(energy_spectrum, bins = 256):
     energy_spectrum_y_axis, energy_spectrum_x_axis = np.histogram(energy_spectrum, bins=bins)
 
     # Find the approx position of the photopeak
-    approx_photopeak_bin = np.where(energy_spectrum_y_axis == np.amax(energy_spectrum_y_axis))
+    approx_photopeak_bin = np.where(energy_spectrum_y_axis[bins/2::] == np.amax(energy_spectrum_y_axis[bins/2::]))
+    approx_photopeak_bin[0][0] += bins/2
 
     ## Set region around the photopeak
     GaussLowerBound = int(approx_photopeak_bin[0][0]*0.80)

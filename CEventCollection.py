@@ -48,6 +48,10 @@ class CEventCollection:
         return self.__incident_photons
 
     @property
+    def kev_energy(self):
+        return self.__kev_energy
+
+    @property
     def pixel_x_coord(self):
         return self.__pixel_x_coord
 
