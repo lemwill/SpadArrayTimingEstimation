@@ -44,6 +44,10 @@ class CEventCollection:
         return np.shape(self.__timestamps)[1]
 
     @property
+    def qty_of_incident_photons(self):
+        return self.__incident_photons
+
+    @property
     def pixel_x_coord(self):
         return self.__pixel_x_coord
 
@@ -62,6 +66,7 @@ class CEventCollection:
         self.__timestamps = self.__timestamps[events_to_delete_boolean, :]
         self.__trigger_type = self.__trigger_type[events_to_delete_boolean, :]
         self.__qty_spad_triggered = self.__qty_spad_triggered[events_to_delete_boolean]
+        self.__incident_photons = self.__incident_photons[events_to_delete_boolean]
         self.__interaction_time = self.__interaction_time[events_to_delete_boolean]
         self.__pixel_x_coord = self.__pixel_x_coord[events_to_delete_boolean, :]
         self.__pixel_y_coord = self.__pixel_y_coord[events_to_delete_boolean, :]
@@ -199,12 +204,13 @@ class CEventCollection:
 
 
 
-    def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord):
+    def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord, incident_photons):
 
         self.__event_id = event_id
         self.__trigger_type = trigger_type
         self.__timestamps = timestamps
         self.__qty_spad_triggered = qty_spad_triggered
+        self.__incident_photons = incident_photons
         self.__interaction_time = np.zeros(timestamps.shape[0])
         self.__pixel_x_coord = pixel_x_coord
         self.__pixel_y_coord = pixel_y_coord

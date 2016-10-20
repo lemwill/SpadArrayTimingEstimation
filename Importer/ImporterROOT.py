@@ -56,7 +56,8 @@ class ImporterRoot:
         valid_event_count -= 1
         return CEventCollection(event_ID[0:valid_event_count], global_time[0:valid_event_count],
                                 spad_trigger_count[0:valid_event_count], trigger_type[0:valid_event_count],
-                                pixel_x_coord[0:valid_event_count], pixel_y_coord[0:valid_event_count])
+                                pixel_x_coord[0:valid_event_count], pixel_y_coord[0:valid_event_count],
+                                photon_count)
 
     def import_true_energy(self, number_of_events=0, start=0):
         if number_of_events == 0:
