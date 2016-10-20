@@ -61,6 +61,12 @@ class CEventCollection:
     def set_energy_resolution(self, energy_resolution):
         self._energy_resolution = energy_resolution
 
+    def set_linear_energy_resolution(self, energy_resolution):
+        self._linear_energy_resolution = energy_resolution
+
+    def get_linear_energy_resolution(self):
+        return self._linear_energy_resolution
+
     def delete_events(self, events_to_delete_boolean):
         self.__event_id = self.__event_id[events_to_delete_boolean]
         self.__timestamps = self.__timestamps[events_to_delete_boolean, :]
@@ -68,6 +74,7 @@ class CEventCollection:
         self.__qty_spad_triggered = self.__qty_spad_triggered[events_to_delete_boolean]
         self.__incident_photons = self.__incident_photons[events_to_delete_boolean]
         self.__interaction_time = self.__interaction_time[events_to_delete_boolean]
+        self.__kev_energy = self.__kev_energy[events_to_delete_boolean]
         self.__pixel_x_coord = self.__pixel_x_coord[events_to_delete_boolean, :]
         self.__pixel_y_coord = self.__pixel_y_coord[events_to_delete_boolean, :]
 
@@ -186,6 +193,13 @@ class CEventCollection:
 
         print("Events with less than {0} photons have been removed. There are {1} events left".format(min_photons, np.shape(self.__event_id)[0]))
 
+    def remove_events_with_too_many_photons(self, max_photons=20000):
+        keep_mask = self.qty_of_incident_photons < max_photons
+        self.delete_events(keep_mask)
+        print("Events with less than {0} photons have been removed. There are {1} events left".format(max_photons, np.shape(self.__event_id)[0]))
+
+
+
     def apply_tdc_sharing(self, pixels_per_tdc_x = 1, pixels_per_tdc_y=1):
 
         print("\n#### Sharing TDCs ####")
@@ -211,8 +225,10 @@ class CEventCollection:
         self.__timestamps = timestamps
         self.__qty_spad_triggered = qty_spad_triggered
         self.__incident_photons = incident_photons
+        self.__kev_energy= np.zeros(timestamps.shape[0])
         self.__interaction_time = np.zeros(timestamps.shape[0])
         self.__pixel_x_coord = pixel_x_coord
         self.__pixel_y_coord = pixel_y_coord
         self._energy_resolution = 0
+        self._linear_energy_resolution = 0
         print("Event collection created with: {0} events.".format(self.qty_of_events) )

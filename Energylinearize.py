@@ -25,9 +25,13 @@ def gaussian(x, mean, variance, A):
     return A * gain * np.exp(-1 * exponent)
 
 
-def exp_func(x, a, b, c):
+def neg_exp_func(x, a, b, c):
     y = a *(1 - np.exp(-1 * b * x)) + c
     return y
+
+
+def exp_func(x, a, b, c):
+    return a * np.exp(b*x) +c
 
 
 def collection_procedure(filename, number_of_events=0, min_photons=np.NaN):
@@ -39,6 +43,7 @@ def collection_procedure(filename, number_of_events=0, min_photons=np.NaN):
     print(filename)
     print(event_collection.qty_spad_triggered)
     # Energy discrimination -------------------------------------------------
+    event_collection.remove_events_with_too_many_photons()
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=0,
                                                  high_threshold_kev=700)
 
@@ -72,24 +77,44 @@ def main_loop():
     collection_662_filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW_662.root"
     collection_1275_filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW_1275.root"
 
-    coll_511_events, coll_511_coincidences = collection_procedure(collection_511_filename, 10000)
+    coll_511_events, coll_511_coincidences = collection_procedure(collection_511_filename, 50000)
 
     plt.figure()
     plt.scatter(coll_511_events.qty_of_incident_photons, coll_511_events.qty_spad_triggered)
     p0 = [500, 1e-4, 0]
 
-    popt, pcov = curve_fit(exp_func, coll_511_events.qty_of_incident_photons, coll_511_events.qty_spad_triggered, p0)
+    popt, pcov = curve_fit(neg_exp_func, coll_511_events.qty_of_incident_photons, coll_511_events.qty_spad_triggered, p0)
 
     fit_a = popt[0]
     fit_b = popt[1]
     fit_c = popt[2]
 
-    print(popt)
+    #print(popt)
 
     fit_x = np.arange(0, 10000.0)
-    fit_y = exp_func(fit_x, fit_a, fit_b, fit_c)
-    plt.plot(fit_x, fit_y)
-    plt.show()
+    fit_y = neg_exp_func(fit_x, fit_a, fit_b, fit_c)
+    plt.plot(fit_x, fit_y, 'r')
+
+    plt.figure()
+    plt.scatter(coll_511_events.qty_spad_triggered, coll_511_events.qty_of_incident_photons)
+
+    popt, pcov = curve_fit(exp_func, coll_511_events.qty_spad_triggered, coll_511_events.qty_of_incident_photons, p0)
+
+    fit_a = popt[0]
+    fit_b = popt[1]
+    fit_c = popt[2]
+
+    #print(popt)
+
+    test_x = np.arange(0, 1000.0)
+    test_y = exp_func(test_x, fit_a, fit_b, fit_c)
+    plt.plot(test_x, test_y, 'r')
+
+    #plt.figure()
+    CEnergyDiscrimination.display_linear_energy_spectrum(coll_511_events, 128)
+    #print(coll_511_events.kev_energy)
+
+
 
 if __name__ == '__main__':
     main_loop()
