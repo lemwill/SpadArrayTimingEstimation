@@ -71,6 +71,9 @@ class CEventCollection:
     def get_linear_energy_resolution(self):
         return self._linear_energy_resolution
 
+    def set_kev_energy(self, kev_energy):
+        self.__kev_energy = kev_energy
+
     def delete_events(self, events_to_delete_boolean):
         self.__event_id = self.__event_id[events_to_delete_boolean]
         self.__timestamps = self.__timestamps[events_to_delete_boolean, :]
@@ -200,7 +203,7 @@ class CEventCollection:
     def remove_events_with_too_many_photons(self, max_photons=20000):
         keep_mask = self.qty_of_incident_photons < max_photons
         self.delete_events(keep_mask)
-        print("Events with less than {0} photons have been removed. There are {1} events left".format(max_photons, np.shape(self.__event_id)[0]))
+        print("Events with more than {0} photons have been removed. There are {1} events left".format(max_photons, np.shape(self.__event_id)[0]))
 
 
 

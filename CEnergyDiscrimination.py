@@ -75,7 +75,7 @@ def get_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_
     photopeak_mean, photopeak_sigma, photopeak_amplitude = fit_photopeak(linear_energy, bins = histogram_bins_qty)
 
     k = peak_energy/photopeak_mean
-    event_collection.kev_energy = linear_energy*k
+    event_collection.set_kev_energy(linear_energy*k)
     kev_peak_sigma = k*photopeak_sigma
     kev_peak_amplitude = k*photopeak_amplitude
 
@@ -92,7 +92,10 @@ def display_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, p
     plt.figure()
     plt.hist(event_collection.kev_energy, bins=histogram_bins_qty)
     x = np.linspace(0, 700, 700)
-    plt.plot(x, kev_peak_amplitude*mlab.normpdf(x,peak_energy, kev_peak_sigma), 'r')
+    plt.plot(x, kev_peak_amplitude*mlab.normpdf(x,peak_energy, kev_peak_sigma), 'r', linewidth=3)
+    plt.xlabel('Energy (keV)')
+    plt.ylabel("Number of events")
+    plt.text(150, 300, "Energy resolution : {0:.2f} %".format(event_collection.get_linear_energy_resolution()))
     plt.show()
 
 def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_kev):
