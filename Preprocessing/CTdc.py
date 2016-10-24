@@ -26,7 +26,7 @@ class CTdc:
         self.calculate_tdc_resolutions_with_errors(22*22)
 
 
-    def get_code_density(self, event_number=1000000):
+    def get_code_density(self, event_number=10000000):
 
         event_collection = CImporterRandom.import_data(event_number)
         fine_per_coarse = 1.2*self.fast_oscillator_period_ps/(self.fast_oscillator_period_ps-self.slow_oscillator_period_ps)
@@ -125,7 +125,7 @@ class CTdc:
 
         plt.show()
 
-    def get_coarse_and_fine_resolution(self, event_number=100000):
+    def get_coarse_and_fine_resolution(self, event_number=1000000):
 
         code_density, coarse_counter, fine_counter = self.get_code_density(event_number=event_number)
         sum_code_density = np.sum(code_density)

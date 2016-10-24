@@ -4,6 +4,7 @@ import argparse
 from Preprocessing import CTdc, CEnergyDiscrimination
 from Preprocessing.CCoincidenceCollection import CCoincidenceCollection
 from Preprocessing.CTdc import CTdc
+from Preprocessing.CClockSkew import CClockSkew
 
 ## Importers
 from Importer import CImporterEventsDualEnergy
@@ -18,7 +19,7 @@ from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
 from TimingAlgorithms import cramer_rao
 
 # Distriminators
-from DarkCountDiscriminator import DiscriminatorDualWindow
+from DarkCountDiscriminator import DiscriminatorSingleWindow
 from DarkCountDiscriminator import DiscriminatorMultiWindow
 
 import numpy as np
@@ -26,7 +27,7 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as lines
 
 import itertools
-
+import copy
 def run_timing_algorithm(algorithm, event_collection):
 
     # Evaluate the resolution of the collection
@@ -52,45 +53,40 @@ def main_loop():
     #event_collection2 = CImporterEventsDualEnergy.import_data(args.filename2)
 
     importer = ImporterRoot()
-    event_collection = importer.import_data(args.filename, event_count=10000)
-    event_collection2 = importer.import_data(args.filename, event_count=10000)
-
+    event_collection_with_dark_count = importer.import_data(args.filename2, event_count=40000)
+    event_collection_without_dark_count = importer.import_data(args.filename, event_count=40000)
 
     # Energy discrimination ----------------------------------------------------------------------------------------
-    CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)
-    CEnergyDiscrimination.discriminate_by_energy(event_collection2, low_threshold_kev=425, high_threshold_kev=700)
+    CEnergyDiscrimination.discriminate_by_energy(event_collection_with_dark_count, low_threshold_kev=425, high_threshold_kev=700)
+    CEnergyDiscrimination.discriminate_by_energy(event_collection_without_dark_count, low_threshold_kev=425, high_threshold_kev=700)
 
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
-    event_collection2.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
+    event_collection_with_dark_count.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
+    event_collection_without_dark_count.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
 
-    #event_collection.save_for_hardware_simulator()
+    event_collection_no_correction = copy.deepcopy(event_collection_with_dark_count)
 
-    # Sharing of TDCs --------------------------------------------------------------------------------------------------
-   # event_collection.apply_tdc_sharing( pixels_per_tdc_x=1, pixels_per_tdc_y=1)
-   # event_collection.apply_tdc_sharing( pixels_per_tdc_x=1, pixels_per_tdc_y=1)
+
+    # Clock skew ---------------------------------------------------------------------------------------------------
+    clock_skew_50ps = CClockSkew(clock_skew_std=50, array_size_x=event_collection_no_correction.x_array_size, array_size_y=event_collection_no_correction.y_array_size)
+
+    # TDC ----------------------------------------------------------------------------------------------------------
+    # Apply TDC - Must be applied after making the coincidences because the coincidence adds a random time offset to pairs of events
+    tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=500, tdc_resolution=8,tdc_resolution_error_std=1, tdc_jitter_std=0, jitter_fine_std=0.7)
+    tdc.get_sampled_timestamps(event_collection_no_correction)
+    tdc.get_sampled_timestamps(event_collection_with_dark_count, correct_resolution=True)
+
 
     # First photon discriminator -----------------------------------------------------------------------------------
-    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
-    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection2)
+    DiscriminatorSingleWindow.DiscriminatorSingleWindow(event_collection_with_dark_count, window1=300, photon_order=4)
+    DiscriminatorSingleWindow.DiscriminatorSingleWindow(event_collection_no_correction, window1=4000, photon_order=5)
 
-#    DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
+    coincidence_collection = CCoincidenceCollection(event_collection_without_dark_count)
+    coincidence_collection_with_dark_count = CCoincidenceCollection(event_collection_with_dark_count)
+    coincidence_collection_no_correction = CCoincidenceCollection(event_collection_no_correction)
 
-    #DiscriminatorWindowDensity.DiscriminatorWindowDensity(event_collection)
-    #DiscriminatorForwardDelta.DiscriminatorForwardDelta(event_collection)
 
-    # Making of coincidences ---------------------------------------------------------------------------------------
-
-    # Apply TDC - Must be applied after making the coincidences because the coincidence adds a random time offset to pairs of events
-    #tdc = CTdc( system_clock_period_ps = 4000, fast_oscillator_period_ps= 500, tdc_resolution = 15, tdc_jitter_std = 15)
-    #tdc.get_sampled_timestamps(event_collection)
-    #tdc.get_sampled_timestamps(event_collection2)
-
-    coincidence_collection = CCoincidenceCollection(event_collection)
-
-    #coincidence_collection = CCoincidenceCollection(event_collection, event_collection2)
-
-    max_order = 32
+    max_order = 33
     ctr_fwhm_array = np.array([])
 
     if(max_order > coincidence_collection.qty_of_photons):
@@ -116,9 +112,17 @@ def main_loop():
 
     for i in range(1, max_order):
         algorithm = CAlgorithmSinglePhoton(photon_count=i)
-        ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection)
+        ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection_no_correction)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(range(1, max_order), ctr_fwhm_array, label='Nth photon', marker='o', markevery=0.06)
+    plt.plot(range(1, max_order), ctr_fwhm_array, label='Nth photon, no correction', marker='o', markevery=0.06)
+
+
+    ctr_fwhm_array = np.array([])
+    for i in range(1, max_order):
+        algorithm = CAlgorithmSinglePhoton(photon_count=i)
+        ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection_with_dark_count)
+        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(range(1, max_order), ctr_fwhm_array, label='Nth photon with dark count', marker='_', markevery=0.06)
 
    # ctr_fwhm_array = np.array([])
    # for i in range(1, max_order):
@@ -130,10 +134,25 @@ def main_loop():
 
     ctr_fwhm_array = np.array([])
     for i in range(1, max_order):
+        algorithm = CAlgorithmBlue(coincidence_collection_no_correction, photon_count=i)
+        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection_no_correction)
+        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(range(1, max_order), ctr_fwhm_array , label='BLUE', marker='x', markevery=0.04)
+
+    ctr_fwhm_array = np.array([])
+    for i in range(1, max_order):
         algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
         ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(range(1, max_order), ctr_fwhm_array , label='BLUE', marker='D', markevery=0.04)
+    #plt.plot(range(1, max_order), ctr_fwhm_array , label='BLUE', marker='D', markevery=0.04)
+    plt.axhline(y=ctr_fwhm, linestyle='--', label='No dark count')
+
+    ctr_fwhm_array = np.array([])
+    for i in range(1, max_order):
+        algorithm = CAlgorithmBlue(coincidence_collection_with_dark_count, photon_count=i)
+        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection_with_dark_count)
+        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    plt.plot(range(1, max_order), ctr_fwhm_array , label='BLUE with dark count', marker='<', markevery=0.04)
 
     #ctr_fwhm_array = np.array([])
     #for i in range(2, max_order):
@@ -159,10 +178,14 @@ def main_loop():
 
 
     #plt.axhline(y=cramer_rao_limit, linestyle='dotted', label='Cramer Rao limit\n of the photodetector\n(with ' + str(max_order) + ' photons)')
-    plt.xlabel('Order of photons used to estimate the time of interaction.')
+
+    plt.xlabel('Number of photons used to estimate the time of interaction.')
     plt.ylabel('Coincidence timing resolution (ps FWHM).')
     #plt.title('Coincidence timing resolution for BLUE\n with different training methods.')
-    plt.legend()
+    #plt.legend()
+    axes = plt.gca()
+    axes.set_ylim([90, 170])
+    plt.rcParams.update({'font.size':16})
     plt.show()
 
     #for i in range(2, 16):

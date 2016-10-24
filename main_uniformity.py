@@ -41,6 +41,8 @@ def main_loop():
     parser.add_argument("filename", help='The file path of the data to import')
     args = parser.parse_args()
 
+
+
     # File import --------------------------------------------------------------------------------------------------
     event_collection_original = CImporterEventsDualEnergy.import_data(args.filename ,  10000, simulate_laser_pulse=True)
 
@@ -110,7 +112,7 @@ def main_loop():
     plt.ylabel('Timing resolution (ps STD)')
     #plt.title('Impact of the uniformity of a TDC array on timing performance')
    # plt.hist(histogram.ravel(), bins=64)
-    plt.legend()
+    #plt.legend()
     plt.show()
 
 main_loop()

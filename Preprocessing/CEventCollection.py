@@ -43,6 +43,15 @@ class CEventCollection(object):
         return np.shape(self.__timestamps)[1]
 
     @property
+    def x_array_size(self):
+        return self.__x_array_size
+
+    @property
+    def y_array_size(self):
+        return self.__y_array_size
+
+
+    @property
     def pixel_x_coord(self):
         return self.__pixel_x_coord
 
@@ -204,6 +213,9 @@ class CEventCollection(object):
         self.__pixel_x_coord = pixel_x_coord
         self.__pixel_y_coord = pixel_y_coord
         self._energy_resolution = 0
+
+        self.__x_array_size = int(np.max(self.pixel_x_coord) +1)
+        self.__y_array_size = int(np.max(self.pixel_y_coord) +1)
 
         self.add_random_offset()
         if(verbose == True):
