@@ -19,7 +19,7 @@ def get_intrinsic_limit(coincidence_collection, photon_count):
     cramer_rao2 = np.sqrt(1/sum_cov)*2.35482004503
     print cramer_rao2
 
-    print np.sqrt(cramer_rao1*cramer_rao1+cramer_rao2*cramer_rao2)
+    return np.sqrt(cramer_rao1*cramer_rao1+cramer_rao2*cramer_rao2)
 
     appended_timestamps = np.append(corrected_timestamps1, corrected_timestamps2, axis=1)
     covariance = np.cov(appended_timestamps[:, :photon_count*2], rowvar=0)

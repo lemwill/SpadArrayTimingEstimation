@@ -125,6 +125,12 @@ class CEventCollection(object):
 
         return keep_mask
 
+    def cut_pde_in_half(self):
+
+        self.timestamps = np.ma.masked_where(np.random.randint(2, size=self.timestamps.shape), self.timestamps)
+
+        self.remove_masked_photons()
+
     def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True):
 
         # Grab the index of values 1, 5, 11 - true, masked and cerenkov
