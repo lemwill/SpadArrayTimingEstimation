@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib
 import copy
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.optimize import curve_fit
 import scipy.stats as st
@@ -38,11 +39,11 @@ def log_func(x, a, b, c):
     return a * np.log(b * x) + c
 
 
-def collection_procedure(filename, number_of_events=0, min_photons=np.NaN):
+def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.NaN):
     # File import -----------------------------------------------------------
     importer = ImporterRoot()
     importer.open_root_file(filename)
-    event_collection = importer.import_all_spad_events(number_of_events)
+    event_collection = importer.import_all_spad_events(number_of_events, start)
     print("#### Opening file ####")
     print(filename)
     # Energy discrimination -------------------------------------------------
@@ -59,16 +60,15 @@ def collection_procedure(filename, number_of_events=0, min_photons=np.NaN):
     # Sharing of TDCs --------------------------------------------------------
     # event_collection.apply_tdc_sharing(pixels_per_tdc_x=1, pixels_per_tdc_y=1)
 
-    # First photon discriminator ---------------------------------------------
-    # DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
-    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection, min_photons)
-    #event_collection.remove_events_with_fewer_photons(100)
-
     # Apply TDC - Must be applied after making the coincidences because the
     # coincidence adds a random time offset to pairs of events
     #tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=1, tdc_jitter_std=1)
     #tdc.get_sampled_timestamps(event_collection)
     #tdc.get_sampled_timestamps(coincidence_collection.detector2)
+
+    # First photon discriminator ---------------------------------------------
+    # DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
+    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection, min_photons)
 
     # Making of coincidences -------------------------------------------------
     coincidence_collection = CCoincidenceCollection(event_collection)
@@ -87,14 +87,19 @@ def confusion_matrix(estimation, reference):
 
 
 def get_er_for_kev_thld(event_coll, mip=50, atol=20):
-    max_iter = 800
-    energy_thld_kev_list = [250, 300, 350, 400, 450]
+    max_iter = 2000
+    energy_thld_kev_list = [250, 300, 350, 400]
+    time_thld_list = np.zeros_like(energy_thld_kev_list)
     energy_thld = np.zeros(event_coll.qty_of_events)
     error_rate = np.zeros(np.size(energy_thld_kev_list))
+    estimation_photopeak = np.zeros((np.size(energy_thld_kev_list), event_coll.qty_of_events))
+
+    conf_mat = np.zeros((np.size(energy_thld_kev_list), 4, event_coll.qty_of_events))
 
     energy_thld[0:event_coll.qty_of_events] = event_coll.timestamps[:, mip] - event_coll.timestamps[:, 0]
     p0 = [10000, -0.005, 100]
     popt, pcov = curve_fit(exp_func, event_coll.kev_energy, energy_thld, p0)
+    atol_start = atol
 
     for i, energy_thld_kev in enumerate(energy_thld_kev_list):
         Full_event_photopeak = np.logical_and(np.less_equal(event_coll.kev_energy, 700),
@@ -103,23 +108,32 @@ def get_er_for_kev_thld(event_coll, mip=50, atol=20):
         n_iter = 0
         not_optimal = True
         adjust = 10
+        atol = atol_start
+        step=10
         while not_optimal:
             if n_iter > max_iter:
                 print("MAXIMUM iteration of {0} reached".format(max_iter))
-                error_rate[i] = error_rate_temp
+                #error_rate[i] = error_rate_temp
                 break
-            if n_iter > max_iter/4:
+            if n_iter == max_iter/4:
                 adjust/=2
-            elif n_iter > max_iter/2:
+                step*=2
+            elif n_iter == max_iter/2:
                 adjust/=2
-            elif n_iter > 3*max_iter/4:
+                atol *=4
+                step*=2
+            elif n_iter == 8*max_iter/10:
                 adjust/=2
+                atol *=4
+                step*=2
 
-            estimation_photopeak = np.logical_and(np.less_equal(energy_thld[0:event_coll.qty_of_events], timing_threshold),
+            estimation_photopeak[i,:] = np.logical_and(np.less_equal(energy_thld[0:event_coll.qty_of_events], timing_threshold),
                                                       np.greater_equal(energy_thld[0:event_coll.qty_of_events], 0))
 
             True_positive, True_negative, False_positive, False_negative = \
-                confusion_matrix(estimation_photopeak, Full_event_photopeak)
+                confusion_matrix(estimation_photopeak[i,:], Full_event_photopeak)
+
+            conf_mat[i, :, :] = [True_positive, True_negative, False_positive, False_negative]
 
             true_positive_count = np.count_nonzero(True_positive)
             true_negative_count= np.count_nonzero(True_negative)
@@ -127,28 +141,56 @@ def get_er_for_kev_thld(event_coll, mip=50, atol=20):
             false_negative_count = np.count_nonzero(False_negative)
             error_rate_temp = (false_negative_count + false_positive_count) / float(event_coll.qty_of_events)
 
-            print("#### The current threshold is #{0} ps".format(timing_threshold))
-            print("#### The agreement results for photon #{0} are : ####".format(mip))
-            print("True positive : {0}    True negative: {1}".format(true_positive_count, true_negative_count))
-            print("False positive : {0}   False negative: {1}".format(false_positive_count, false_negative_count))
-
-            print("For an ERROR RATE of {0:02.2%}\n".format(error_rate_temp))
-
             if np.isclose(false_positive_count, false_negative_count, atol=atol):
                 not_optimal = False
                 error_rate[i] = error_rate_temp
-                print("Solution found in {0} iteration".format(n_iter))
+                time_thld_list[i] = timing_threshold
+
+                print("#### The current threshold is {1} keV at #{0} ps".format(timing_threshold, energy_thld_kev))
+                print("#### The agreement results for photon #{0} are : ####".format(mip))
+                print("True positive : {0}    True negative: {1}".format(true_positive_count, true_negative_count))
+                print("False positive : {0}   False negative: {1}".format(false_positive_count, false_negative_count))
+
+                print("For an ERROR RATE of {0:02.2%}\n".format(error_rate_temp))
+                print("Solution found in {0} iteration with {1} tolerance".format(n_iter, atol))
             else:
                 n_iter += 1
                 if false_negative_count > false_positive_count:
-                    timing_threshold += timing_threshold/10
+                    timing_threshold += timing_threshold/step
                 else:
-                    timing_threshold -= timing_threshold/10
+                    timing_threshold -= timing_threshold/step
 
+    return error_rate, conf_mat, estimation_photopeak, time_thld_list
 
+def get_er_for_time_threshold(event_coll, timing_thld, mip=50):
+    energy_thld_kev_list= [250, 300, 350, 400]
+    estimation_photopeak = np.zeros((np.size(energy_thld_kev_list), event_coll.qty_of_events))
+    energy_thld = np.zeros(event_coll.qty_of_events)
+    conf_mat = np.zeros((np.size(energy_thld_kev_list), 4))
+    error_rate = np.zeros(np.size(energy_thld_kev_list))
 
-    return error_rate
+    for i, energy_thld_kev in enumerate(energy_thld_kev_list):
+        Full_event_photopeak = np.logical_and(np.less_equal(event_coll.kev_energy, 700),
+                                              np.greater_equal(event_coll.kev_energy, energy_thld_kev))
 
+        energy_thld[0:event_coll.qty_of_events] = event_coll.timestamps[:, mip] - event_coll.timestamps[:, 0]
+        estimation_photopeak[i,:] = np.logical_and(np.less_equal(energy_thld[0:event_coll.qty_of_events], timing_thld[i]),
+                                                      np.greater_equal(energy_thld[0:event_coll.qty_of_events], 0))
+
+        True_positive, True_negative, False_positive, False_negative = \
+        confusion_matrix(estimation_photopeak[i,:], Full_event_photopeak)
+
+        # conf_mat[i, :, :] = [True_positive, True_negative, False_positive, False_negative]
+
+        true_positive_count = np.count_nonzero(True_positive)
+        true_negative_count= np.count_nonzero(True_negative)
+        false_positive_count = np.count_nonzero(False_positive)
+        false_negative_count = np.count_nonzero(False_negative)
+        error_rate[i] = (false_negative_count + false_positive_count) / float(event_coll.qty_of_events)
+
+        conf_mat[i, :] = [true_positive_count, true_negative_count, false_positive_count, false_negative_count]
+
+    return error_rate, conf_mat, estimation_photopeak
 
 def main_loop():
     matplotlib.rc('xtick', labelsize=18)
@@ -158,45 +200,83 @@ def main_loop():
             'size': 18}
 
     matplotlib.rc('font', **font)
-    collection_511_filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW.root"
-    collection_662_filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW_662.root"
-    collection_1275_filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW_1275.root"
 
     noise_list = ["1", "10", "100", "300", "1000"]
-    tdc_list = [1, 10, 30, 50, 80, 100, 150, 200]
-    atol_list = [20, 20, 60, 100, 150, 200, 300, 500]
+    tdc_list = [1, 10, 30, 50, 80, 100, 150, 200, 300, 400, 500]
+    atol_list = [20, 20, 30, 50, 80, 100, 100, 200, 300, 400, 500]
 
-    event_count = 50000
-    all_dcr_error_rates = np.zeros((5, 6))
-    all_tdc_error_rates = np.zeros((5, np.size(tdc_list)+1))
+    event_count = 140000
+    all_dcr_error_rates = np.zeros((4, 6))
+    all_tdc_error_rates = np.zeros((4, np.size(tdc_list)+1))
+    tdc_thld_list = np.zeros(((np.size(tdc_list)+1), 4))
+    dcr_thld_list = np.zeros(((np.size(noise_list)+1), 4))
 
     filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW.root"
     event_coll, coincidence_coll = collection_procedure(filename, event_count)
     CEnergyDiscrimination.get_linear_energy_spectrum(event_coll, 128)
+    # CEnergyDiscrimination.display_linear_energy_spectrum(event_coll)
+    energy_thld = event_coll.timestamps[:, 50] - event_coll.timestamps[:, 0]
 
-    all_tdc_error_rates[:,0] = get_er_for_kev_thld(event_coll, atol=20)
+    all_tdc_error_rates[:,0], raw_conf_mat, estimation_photopeak, tdc_thld_list[0, :] = get_er_for_kev_thld(event_coll, atol=20)
+    thld = tdc_thld_list[0, :]
+    dcr_thld_list[0,:] = tdc_thld_list[0, :]
     all_dcr_error_rates[:,0] = all_tdc_error_rates[:,0]
+    [True_positive, True_negative, False_positive, False_negative] = raw_conf_mat[2, :, :]
+    index = np.logical_or(True_positive, True_negative)
+    ETT = energy_thld[index]
+    index = np.logical_or(False_positive, False_negative)
+    ETTF = energy_thld[index]
+    plt.figure()
+    plt.hist([ETTF, ETT], 256, stacked=True, color=['red', 'blue'], rwidth=1)
+    plt.axvline(thld[2], color='green', linestyle='dashed', linewidth=2)
+
+    plt.xlabel('Arrival time of photoelectron of rank k=50(ps)', fontsize=16)
+    x_max_lim = round(np.max(energy_thld))/3
+    plt.xlim([0, x_max_lim])
+    plt.text(thld[2]+0.05*thld[2], 2*x_max_lim/3, 'Discrimination\n threshold')
+    plt.ylabel('Counts', fontsize=16)
+
+    plt.tick_params(axis='both', which='major', labelsize=16)
+    blue_patch = mpatches.Patch(color='b', label='True')
+    red_patch = mpatches.Patch(color='r', label='False')
+
+    plt.legend(handles=[blue_patch, red_patch], fontsize=16)
+    plt.savefig("time_hist_50", transparent=True, format="png")
 
     for i, tdc in enumerate(tdc_list):
         current_tdc_coll = copy.deepcopy(event_coll)
         tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=tdc, tdc_jitter_std=tdc)
         tdc.get_sampled_timestamps(current_tdc_coll)
         CEnergyDiscrimination.get_linear_energy_spectrum(current_tdc_coll, 128)
-        all_tdc_error_rates[:, i+1] = get_er_for_kev_thld(current_tdc_coll, atol=atol_list[i])
+        all_tdc_error_rates[:, i+1], raw_conf_mat, estimation_photopeak, tdc_thld_list[i+1,:] = get_er_for_kev_thld(current_tdc_coll, atol=atol_list[i])
 
-    energy_thld_kev_list = [250, 300, 350, 400, 450]
-    plt.figure()
-    plt.plot(energy_thld_kev_list, 100 * all_tdc_error_rates, marker='d')
-    plt.xlabel("Energy Threshold (keV)")
+    complete_tdc_list = np.insert(tdc_list, 0, 0)
+    h= plt.figure()
+    plt.plot(complete_tdc_list, 100 * np.transpose(all_tdc_error_rates), marker='d', linewidth=2)
+    plt.xlabel("TDC resolution (ps)")
     plt.ylabel("Error rate (%)")
-    plt.legend(["No TDC", "1 ps", "10 ps", "30 ps", "50 ps", "80 ps", "100 ps", "150 ps", "200 ps"], fontsize=14)
+    plt.legend(["250 keV", "300 keV","350 keV", "400 keV"], loc='upper left')
+    h.set_size_inches((3,1))
     plt.savefig("TDC_error_rate", transparent=True, format="png")
+
+    result_file="/home/cora2406/FirstPhotonEnergy/results/tdc_thlds"
+    np.savez(result_file, tdc_list=tdc_list, all_tdc_error_rates=all_tdc_error_rates, tdc_thld_list=tdc_thld_list)
 
     for i, noise in enumerate(noise_list):
         filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW_{0}Hz.root".format(noise)
         event_coll, coincidence_coll = collection_procedure(filename, event_count)
         CEnergyDiscrimination.get_linear_energy_spectrum(event_coll, 128)
-        all_dcr_error_rates[:,i+1] = get_er_for_kev_thld(event_coll)
+        all_dcr_error_rates[:,i+1], raw_conf_mat, estimation_photopeak, dcr_thld_list[i+1,:] = get_er_for_kev_thld(event_coll)
+
+    h=plt.figure()
+    complete_noise_list = np.insert(noise_list, 0, 0.1)
+    plt.semilogx(complete_noise_list, 100 * np.transpose(all_dcr_error_rates), marker='d', linewidth=2)
+    plt.xlabel(u"Dark count rate (cps/µm²)")
+    plt.ylabel("Error rate (%)")
+    # plt.legend([u"0 cps/µm²", u"1 cps/µm²", u"10 cps/µm²", u"100 cps/µm²", u"300 cps/µm²", u"1000 cps/µm²"], fontsize=14)
+    plt.legend(["250 keV", "300 keV", "350 keV", "400 keV"], loc='upper left')
+    h.set_size_inches((3,1))
+    plt.savefig("DCR_error_rate", transparent=True, format="png")
 
     # plt.figure()
     # plt.scatter(event_coll.qty_of_incident_photons, event_coll.qty_spad_triggered)
@@ -255,7 +335,6 @@ def main_loop():
     # linear_energy = exp_func(energy_thld, popt[0], popt[1], popt[2])
     #
     # plt.figure()
-    # plt.hist(linear_energy, 128)
     #
     # photopeak_mean, photopeak_sigma, photopeak_amplitude = CEnergyDiscrimination.fit_photopeak(linear_energy, 128)
     # peak_energy = 511
@@ -269,21 +348,19 @@ def main_loop():
     # time_linear_energy_resolution = ((100*kev_peak_sigma*fwhm_ratio)/peak_energy)
     # print("Linear energy resolution is {0:.2f} %".format(time_linear_energy_resolution))
     #
+    # plt.hist(k*linear_energy, 128)
     # x = np.linspace(0, 700, 700)
-    # plt.plot(x, kev_peak_amplitude*mlab.normpdf(x, peak_energy/k, kev_peak_sigma), 'r', linewidth=3)
+    # plt.plot(x, kev_peak_amplitude*mlab.normpdf(x, peak_energy, kev_peak_sigma), 'r', linewidth=3)
     # plt.xlabel('Energy (keV)', fontsize=18)
     # plt.ylabel("Number of events", fontsize=18)
-    # plt.text(100, 400, "Energy resolution : {0:.2f} %".format(time_linear_energy_resolution), fontsize=18)
-    #
+    # plt.text(100, 3000, "Energy resolution : {0:.2f} %".format(time_linear_energy_resolution), fontsize=18)
 
+    result_file="/home/cora2406/FirstPhotonEnergy/results/dcr_thlds"
+    np.savez(result_file, dcr_list=complete_noise_list, all_dcr_error_rates=all_dcr_error_rates, dcr_thld_list=dcr_thld_list)
 
-    plt.figure()
-    plt.plot(energy_thld_kev_list, 100 * all_dcr_error_rates, marker='d')
-    plt.xlabel("Energy Threshold (keV)")
-    plt.ylabel("Error rate (%)")
-    plt.legend([u"0 cps/µm²", u"1 cps/µm²", u"10 cps/µm²", u"100 cps/µm²", u"300 cps/µm²", u"1000 cps/µm²"], fontsize=14)
-    plt.savefig("DCR_error_rate", transparent=True, format="png")
     plt.show()
+
+
 
 if __name__ == '__main__':
     main_loop()
