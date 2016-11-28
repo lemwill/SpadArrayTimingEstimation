@@ -137,21 +137,21 @@ def main_loop():
     event_start = 140000
     last_event = 500000
 
-
-
     for i, dcr in enumerate(dcr_list):
-        for step in range(event_start, last_event, event_count):
+        for step in range(event_start, last_event, event_count*4):
+            pool = multiprocessing.Pool(processes=4)
             dcr_local = dcr_thld_list[i, :]
             filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW{0}.root".format(dcr)
             state = ((filename, step, event_count, dcr_local,))
-            pool = multiprocessing.Pool(processes=1)
-            pool.apply(get_conf_mat_wrapper, state)
-            print(i)
-            pool.close()
-            pool.join()
+            result1 = pool.apply_async(get_conf_mat_wrapper, state)
+            state = ((filename, step+event_count, event_count, dcr_local,))
+            result2 = pool.apply_async(get_conf_mat_wrapper, state)
+            state = ((filename, step+2*event_count, event_count, dcr_local,))
+            result3 = pool.apply_async(get_conf_mat_wrapper, state)
+            state = ((filename, step+3*event_count, event_count, dcr_local,))
+            result4 = pool.apply_async(get_conf_mat_wrapper, state)
 
-            #all_dcr_conf_mat[i,:,:] += conf_mat
-            #gc.collect()
+            all_dcr_conf_mat[i,:,:] += result1.get()+result2.get()+result3.get()+result4.get()
 
         # print(step, dcr_conf_mat[3,0], all_dcr_conf_mat[:,3,0])
 

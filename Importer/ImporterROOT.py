@@ -20,13 +20,12 @@ class ImporterRoot:
         self.file = TFile(filename)
         self.tree = self.file.Get('tree')
 
-    def import_all_spad_events(self, number_of_events=0, start=0):
+    def import_all_spad_events(self, number_of_events=0, start=0, max_elements=256):
         # This loads the entry in tree
         if number_of_events == 0:
             number_of_events = self.tree.GetEntries()-start
 
         #Initialize empty arrays
-        max_elements = 256
         global_time = np.zeros((number_of_events, max_elements))
         pixel_x_coord = np.zeros((number_of_events, max_elements))
         pixel_y_coord = np.zeros((number_of_events, max_elements))

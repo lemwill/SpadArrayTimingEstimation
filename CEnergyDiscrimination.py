@@ -95,7 +95,7 @@ def display_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, p
     plt.plot(x, kev_peak_amplitude*mlab.normpdf(x,peak_energy, kev_peak_sigma), 'r', linewidth=3)
     plt.xlabel('Energy (keV)')
     plt.ylabel("Number of events")
-    plt.text(150, 300, "Energy resolution : {0:.2f} %".format(event_collection.get_linear_energy_resolution()))
+    plt.text(100, kev_peak_amplitude/2, "Energy resolution : {0:.2f} %".format(event_collection.get_linear_energy_resolution()))
     plt.show()
 
 def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_kev):
