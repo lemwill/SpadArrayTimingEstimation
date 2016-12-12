@@ -122,52 +122,91 @@ def main_loop():
 
     matplotlib.rc('font', **font)
 
-    result_file="/home/cora2406/FirstPhotonEnergy/results/dcr_thlds.npz"
-    data = np.load(result_file)
-    dcr_list_num = data['dcr_list']
-    # all_dcr_error_rates=data['all_dcr_error_rates']
-    dcr_thld_list=data['dcr_thld_list']
-
-    dcr_list = ["", "_1Hz", "_10Hz", "_100Hz", "_300Hz", "_1000Hz"]
-
-    all_dcr_error_rate = np.zeros((np.size(dcr_list), 4))
-    all_dcr_conf_mat = np.zeros((np.size(dcr_list), 4, 4))
-
     event_count = 10000
     event_start = 140000
     last_event = 500000
 
-    for i, dcr in enumerate(dcr_list):
+    # result_file="/home/cora2406/FirstPhotonEnergy/results/dcr_thlds.npz"
+    # data = np.load(result_file)
+    # dcr_list_num = data['dcr_list']
+    # dcr_thld_list=data['dcr_thld_list']
+    #
+    # dcr_list = ["", "_1Hz", "_10Hz", "_100Hz", "_300Hz", "_1000Hz"]
+    #
+    # all_dcr_error_rate = np.zeros((np.size(dcr_list), 4))
+    # all_dcr_conf_mat = np.zeros((np.size(dcr_list), 4, 4))
+    #
+    # for i, dcr in enumerate(dcr_list):
+    #     for step in range(event_start, last_event, event_count*4):
+    #         pool = multiprocessing.Pool(processes=4)
+    #         dcr_local = dcr_thld_list[i, :]
+    #         filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW{0}.root".format(dcr)
+    #         state = ((filename, step, event_count, dcr_local,))
+    #         result1 = pool.apply_async(get_conf_mat_wrapper, state)
+    #         state = ((filename, step+event_count, event_count, dcr_local,))
+    #         result2 = pool.apply_async(get_conf_mat_wrapper, state)
+    #         state = ((filename, step+2*event_count, event_count, dcr_local,))
+    #         result3 = pool.apply_async(get_conf_mat_wrapper, state)
+    #         state = ((filename, step+3*event_count, event_count, dcr_local,))
+    #         result4 = pool.apply_async(get_conf_mat_wrapper, state)
+    #
+    #         all_dcr_conf_mat[i,:,:] += result1.get()+result2.get()+result3.get()+result4.get()
+    #
+    #     # print(step, dcr_conf_mat[3,0], all_dcr_conf_mat[:,3,0])
+    #
+    #
+    # total_events=np.sum(all_dcr_conf_mat, axis=2)
+    # print(total_events)
+    # all_dcr_error_rate[:,:] = (all_dcr_conf_mat[:,:,2]+all_dcr_conf_mat[:,:,3])/total_events[:,:]
+    #
+    # h=plt.figure()
+    # for i, m in enumerate(['d', 'o', '^', 's']):
+    #     plt.semilogx(dcr_list_num, 100 * all_dcr_error_rate[:,i], marker=m, linewidth=2)
+    # plt.xlabel(u"Dark count rate (cps/µm²)")
+    # plt.ylabel("Error rate (%)")
+    # plt.legend(["250 keV", "300 keV", "350 keV", "400 keV"], loc='upper left')
+    # h.set_size_inches((3,1))
+    # plt.savefig("DCR_error_rate", transparent=True, format="png")
+
+    result_file="/home/cora2406/FirstPhotonEnergy/results/pde_thlds.npz"
+    data = np.load(result_file)
+    pde_list = data['pde_list']
+    pde_thld_list=data['pde_thld_list']
+
+    all_pde_error_rate = np.zeros((np.size(pde_list), 4))
+    all_pde_conf_mat = np.zeros((np.size(pde_list), 4, 4))
+
+    for i, pde in enumerate(pde_list):
         for step in range(event_start, last_event, event_count*4):
             pool = multiprocessing.Pool(processes=4)
-            dcr_local = dcr_thld_list[i, :]
-            filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW{0}.root".format(dcr)
-            state = ((filename, step, event_count, dcr_local,))
+            pde_local = pde_thld_list[i, :]
+            filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO_1x1x10_PDE{0}.root".format(pde)
+            state = ((filename, step, event_count, pde_local,))
             result1 = pool.apply_async(get_conf_mat_wrapper, state)
-            state = ((filename, step+event_count, event_count, dcr_local,))
+            state = ((filename, step+event_count, event_count, pde_local,))
             result2 = pool.apply_async(get_conf_mat_wrapper, state)
-            state = ((filename, step+2*event_count, event_count, dcr_local,))
+            state = ((filename, step+2*event_count, event_count, pde_local,))
             result3 = pool.apply_async(get_conf_mat_wrapper, state)
-            state = ((filename, step+3*event_count, event_count, dcr_local,))
+            state = ((filename, step+3*event_count, event_count, pde_local,))
             result4 = pool.apply_async(get_conf_mat_wrapper, state)
 
-            all_dcr_conf_mat[i,:,:] += result1.get()+result2.get()+result3.get()+result4.get()
+            all_pde_conf_mat[i,:,:] += result1.get()+result2.get()+result3.get()+result4.get()
 
         # print(step, dcr_conf_mat[3,0], all_dcr_conf_mat[:,3,0])
 
 
-    total_events=np.sum(all_dcr_conf_mat, axis=2)
+    total_events=np.sum(all_pde_conf_mat, axis=2)
     print(total_events)
-    all_dcr_error_rate[:,:] = (all_dcr_conf_mat[:,:,2]+all_dcr_conf_mat[:,:,3])/total_events[:,:]
+    all_pde_error_rate[:,:] = (all_pde_conf_mat[:,:,2]+all_pde_conf_mat[:,:,3])/total_events[:,:]
 
     h=plt.figure()
     for i, m in enumerate(['d', 'o', '^', 's']):
-        plt.semilogx(dcr_list_num, 100 * all_dcr_error_rate[:,i], marker=m, linewidth=2)
-    plt.xlabel(u"Dark count rate (cps/µm²)")
+        plt.plot(pde_list, 100 * all_pde_error_rate[:,i], marker=m, linewidth=2)
+    plt.xlabel(u"PDE (%)")
     plt.ylabel("Error rate (%)")
-    plt.legend(["250 keV", "300 keV", "350 keV", "400 keV"], loc='upper left')
+    plt.legend(["250 keV", "300 keV", "350 keV", "400 keV"], loc='upper right')
     h.set_size_inches((3,1))
-    plt.savefig("DCR_error_rate", transparent=True, format="png")
+    plt.savefig("PDE_error_rate", transparent=True, format="png")
 
     plt.show()
 
