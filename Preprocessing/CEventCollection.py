@@ -16,6 +16,10 @@ class CEventCollection(object):
     type_dead_space_dropped=16
 
     @property
+    def event_id(self):
+        return self.__event_id
+
+    @property
     def timestamps(self):
         return self.__timestamps
 
@@ -30,6 +34,7 @@ class CEventCollection(object):
     @property
     def qty_spad_triggered(self):
         return self.__qty_spad_triggered
+
     @property
     def trigger_type(self):
         return self.__trigger_type
@@ -50,6 +55,12 @@ class CEventCollection(object):
     def y_array_size(self):
         return self.__y_array_size
 
+    def qty_of_incident_photons(self):
+        return self.__incident_photons
+
+    @property
+    def kev_energy(self):
+        return self.__kev_energy
 
     @property
     def pixel_x_coord(self):
@@ -65,12 +76,23 @@ class CEventCollection(object):
     def set_energy_resolution(self, energy_resolution):
         self._energy_resolution = energy_resolution
 
+    def set_linear_energy_resolution(self, energy_resolution):
+        self._linear_energy_resolution = energy_resolution
+
+    def get_linear_energy_resolution(self):
+        return self._linear_energy_resolution
+
+    def set_kev_energy(self, kev_energy):
+        self.__kev_energy = kev_energy
+
     def delete_events(self, events_to_delete_boolean):
         self.__event_id = self.__event_id[events_to_delete_boolean]
         self.__timestamps = self.__timestamps[events_to_delete_boolean, :]
         self.__trigger_type = self.__trigger_type[events_to_delete_boolean, :]
         self.__qty_spad_triggered = self.__qty_spad_triggered[events_to_delete_boolean]
+        self.__incident_photons = self.__incident_photons[events_to_delete_boolean]
         self.__interaction_time = self.__interaction_time[events_to_delete_boolean]
+        self.__kev_energy = self.__kev_energy[events_to_delete_boolean]
         self.__pixel_x_coord = self.__pixel_x_coord[events_to_delete_boolean, :]
         self.__pixel_y_coord = self.__pixel_y_coord[events_to_delete_boolean, :]
 
@@ -87,16 +109,16 @@ class CEventCollection(object):
 
         np.savetxt('spad_fired_single_event.txt', np.transpose((self.timestamps[0, :], address[0,:])), fmt='%d ps %d')   # X is an array
 
-
-    def remove_masked_photons(self, keep_all_events=False):
+    def remove_masked_photons(self, qty_photons_to_keep=np.NaN):
 
         # Count the number of useful photons per event
         photon_count = np.ma.count(self.__timestamps, axis=1)
-        qty_photons_to_keep = int(np.floor(np.average(photon_count) - 3*np.std(photon_count)))
+        if np.isnan(qty_photons_to_keep):
+            qty_photons_to_keep = int(np.floor(np.average(photon_count) -2*np.std(photon_count)))
 
-        if(keep_all_events == True):
-            qty_photons_to_keep = np.min(np.ma.count(self.__timestamps, axis=1))
-
+        if (qty_photons_to_keep <= 0):
+            raise ValueError("Quantity of photons to keep is negative, too much variation. "
+                             "Please check your discriminator.")
 
         keep_mask = (photon_count >= qty_photons_to_keep)
 
@@ -131,7 +153,7 @@ class CEventCollection(object):
 
         self.remove_masked_photons()
 
-    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True):
+    def remove_unwanted_photon_types(self, remove_thermal_noise = False, remove_after_pulsing = False, remove_crosstalk = False, remove_masked_photons = True, min_photons=np.NaN):
 
         # Grab the index of values 1, 5, 11 - true, masked and cerenkov
 
@@ -178,7 +200,24 @@ class CEventCollection(object):
 
         print "\n#### Removing unwanted photon types ####"
 
-        self.remove_masked_photons()
+        self.remove_masked_photons(min_photons)
+
+    def remove_events_with_fewer_photons(self, min_photons):
+
+        photon_count = np.ma.count(self.__timestamps, axis=1)
+        keep_mask = (photon_count >= min_photons)
+
+        # Delete the events without sufficient useful photons
+        self.delete_events(keep_mask)
+
+        print("Events with less than {0} photons have been removed. There are {1} events left".format(min_photons, np.shape(self.__event_id)[0]))
+
+    def remove_events_with_too_many_photons(self, max_photons=20000):
+        keep_mask = self.qty_of_incident_photons < max_photons
+        self.delete_events(keep_mask)
+        print("Events with more than {0} photons have been removed. There are {1} events left".format(max_photons, np.shape(self.__event_id)[0]))
+
+
 
     def apply_tdc_sharing(self, pixels_per_tdc_x = 1, pixels_per_tdc_y=1):
 
@@ -209,12 +248,14 @@ class CEventCollection(object):
         random_offset = np.transpose(np.tile(random_offset, (self.qty_of_photons, 1)))
         self.__timestamps = self.__timestamps + random_offset
 
-    def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord, verbose=True):
+    def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord, incident_photons):
 
         self.__event_id = event_id
         self.__trigger_type = trigger_type
         self.__timestamps = timestamps
         self.__qty_spad_triggered = qty_spad_triggered
+        self.__incident_photons = incident_photons
+        self.__kev_energy= np.zeros(timestamps.shape[0])
         self.__interaction_time = np.zeros(timestamps.shape[0])
         self.__pixel_x_coord = pixel_x_coord
         self.__pixel_y_coord = pixel_y_coord
@@ -224,5 +265,5 @@ class CEventCollection(object):
         self.__y_array_size = int(np.max(self.pixel_y_coord) +1)
 
         self.add_random_offset()
-        if(verbose == True):
-            print("Event collection created with: {0} events.".format(self.qty_of_events) )
+        self._linear_energy_resolution = 0
+        print("Event collection created with: {0} events.".format(self.qty_of_events) )
