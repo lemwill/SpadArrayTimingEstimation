@@ -19,6 +19,8 @@ from TimingAlgorithms import cramer_rao
 
 # Distriminators
 from DarkCountDiscriminator import DiscriminatorDualWindow
+from DarkCountDiscriminator import DiscriminatorMultipleWindows
+
 from DarkCountDiscriminator import DiscriminatorSingleWindow
 from DarkCountDiscriminator import DiscriminatorMultiWindow
 from DarkCountDiscriminator import DiscriminatorWindowDensity
@@ -45,21 +47,13 @@ def run_ideal(filename):
     max_order = 32
 
     importer = ImporterRoot()
-    event_collection = importer.import_data(filename, event_count=  40000)
 
-    # Energy discrimination ----------------------------------------------------------------------------------------
-    CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)
 
-    # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False,
-                                                  remove_crosstalk=False, remove_masked_photons=False)
 
-    coincidence_collection = CCoincidenceCollection(event_collection)
+    ctr_fwhm, ctr_fwhm_dc_removed = run_test(filename)
 
-    algorithm_dc_ideal = CAlgorithmBlue(coincidence_collection, photon_count=max_order)
-    ctr_fwhm_dc_ideal = run_timing_algorithm(algorithm_dc_ideal, coincidence_collection)
 
-    return ctr_fwhm_dc_ideal
+    return ctr_fwhm
 
 def run_test(filename):
     # File import --------------------------------------------------------------------------------------------------
@@ -92,42 +86,42 @@ def run_test(filename):
     ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
     ctr_fwhm_dc_removed = 10000
 
-    for window_photon_order in range(1, 8):
-        for window1 in range(150, 450, 50):
-            gc.collect()
-            print "window 1 :" + str(window1)
-            print "window 2 :" + str(window_photon_order)
-
-            event_collection_with_dark_count_removed = copy.deepcopy(event_collection)
-
-            #DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection_with_dark_count_removed, window1=window1, window2 = window_photon_order)
-            DiscriminatorSingleWindow.DiscriminatorSingleWindow(event_collection_with_dark_count_removed, window1=window1, photon_order=window_photon_order)
-
-            coincidence_collection_dc_removed = CCoincidenceCollection(event_collection_with_dark_count_removed)
-
-            max_order = 32
-            print max_order
-            print coincidence_collection_dc_removed.qty_of_photons-1
-            if (max_order > coincidence_collection_dc_removed.qty_of_photons-1):
-                max_order = coincidence_collection_dc_removed.qty_of_photons-1
-            print max_order
-
-            algorithm_dc_removed = CAlgorithmBlue(coincidence_collection_dc_removed, photon_count=max_order)
-            temp_ctr_fwhm_dc_removed = run_timing_algorithm(algorithm_dc_removed, coincidence_collection_dc_removed)
-
-            if (temp_ctr_fwhm_dc_removed < ctr_fwhm_dc_removed):
-                ctr_fwhm_dc_removed = temp_ctr_fwhm_dc_removed
-                best_window1 = window1
-                best_window2 = 0
-                best_window1_order = window_photon_order
-                best_window2_order = 0
-    ctr_fwhm_dc_removed2 = ctr_fwhm_dc_removed
-
-
-    print "Best window1 : " + str(best_window1)
-    print "Best window1_order : " + str(best_window1_order)
-    print "ctr_fwhm : " + str(ctr_fwhm)
-    print "ctr_fwhm_dc_removed : " + str(ctr_fwhm_dc_removed)
+    # for window_photon_order in range(1, 8):
+    #     for window1 in range(150, 450, 50):
+    #         gc.collect()
+    #         print "window 1 :" + str(window1)
+    #         print "window 2 :" + str(window_photon_order)
+    #
+    #         event_collection_with_dark_count_removed = copy.deepcopy(event_collection)
+    #
+    #         #DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection_with_dark_count_removed, window1=window1, window2 = window_photon_order)
+    #         DiscriminatorSingleWindow.DiscriminatorSingleWindow(event_collection_with_dark_count_removed, window1=window1, photon_order=window_photon_order)
+    #
+    #         coincidence_collection_dc_removed = CCoincidenceCollection(event_collection_with_dark_count_removed)
+    #
+    #         max_order = 32
+    #         print max_order
+    #         print coincidence_collection_dc_removed.qty_of_photons-1
+    #         if (max_order > coincidence_collection_dc_removed.qty_of_photons-1):
+    #             max_order = coincidence_collection_dc_removed.qty_of_photons-1
+    #         print max_order
+    #
+    #         algorithm_dc_removed = CAlgorithmBlue(coincidence_collection_dc_removed, photon_count=max_order)
+    #         temp_ctr_fwhm_dc_removed = run_timing_algorithm(algorithm_dc_removed, coincidence_collection_dc_removed)
+    #
+    #         if (temp_ctr_fwhm_dc_removed < ctr_fwhm_dc_removed):
+    #             ctr_fwhm_dc_removed = temp_ctr_fwhm_dc_removed
+    #             best_window1 = window1
+    #             best_window2 = 0
+    #             best_window1_order = window_photon_order
+    #             best_window2_order = 0
+    # ctr_fwhm_dc_removed2 = ctr_fwhm_dc_removed
+    #
+    #
+    # print "Best window1 : " + str(best_window1)
+    # print "Best window1_order : " + str(best_window1_order)
+    # print "ctr_fwhm : " + str(ctr_fwhm)
+    # print "ctr_fwhm_dc_removed : " + str(ctr_fwhm_dc_removed)
 
     # for window2_photon_order in range(1, 8):
     #     for window2 in range(150, 450, 50):
@@ -166,8 +160,39 @@ def run_test(filename):
     # print "ctr_fwhm_dc_removed2 : " + str(ctr_fwhm_dc_removed2)
 
 
-    # for window2 in range(300, 550, 50):
-    #     for window1 in range(150, 300, 25):
+    windows = np.array([])
+
+    for number_windows in range(1, 5):
+        for window1 in range(150, 200, 10):
+            temp_windows = np.hstack((windows, window1))
+
+            print "windows under test :" + str(temp_windows)
+
+            event_collection_with_dark_count_removed = copy.deepcopy(event_collection)
+
+            DiscriminatorMultipleWindows.DiscriminatorMultipleWindows(event_collection_with_dark_count_removed, temp_windows)
+
+            coincidence_collection_dc_removed = CCoincidenceCollection(event_collection_with_dark_count_removed)
+
+
+            if (max_order > coincidence_collection.qty_of_photons):
+                max_order = coincidence_collection.qty_of_photons
+
+
+
+            algorithm_dc_removed = CAlgorithmBlue(coincidence_collection_dc_removed, photon_count=max_order)
+            temp_ctr_fwhm_dc_removed = run_timing_algorithm(algorithm_dc_removed, coincidence_collection_dc_removed)
+
+            if (temp_ctr_fwhm_dc_removed < ctr_fwhm_dc_removed):
+                ctr_fwhm_dc_removed = temp_ctr_fwhm_dc_removed
+                best_window = window1
+
+        windows = np.hstack((windows, best_window))
+        best_window = 10000
+    print "Best windows : " + str(windows)
+
+    # for window2 in range(150, 200, 10):
+    #     for window1 in range(150, 200, 10):
     #         print "window 1 :" + str(window1)
     #         print "window 2 :" + str(window2)
     #
@@ -190,10 +215,15 @@ def run_test(filename):
     #             ctr_fwhm_dc_removed = temp_ctr_fwhm_dc_removed
     #             best_window1 = window1
     #             best_window2 = window2
+    #
+    #
+    # print "Best window1 : " + str(best_window1)
+    # print "Best window2  : " + str(best_window2)
 
+    print "ctr_fwhm : " + str(ctr_fwhm)
+    print "ctr_fwhm_dc_removed : " + str(ctr_fwhm_dc_removed)
 
-
-    return ctr_fwhm, ctr_fwhm_dc_removed, ctr_fwhm_dc_removed2
+    return ctr_fwhm, ctr_fwhm_dc_removed
 
 
 
@@ -207,22 +237,38 @@ def main_loop():
     ctr_fwhm_array_dc_removed2 = np.array([])
 
     x = np.array([])
-    ctr_fwhm_ideal = run_ideal(folder + "LYSO_1x1x3_TW_baseline.root")
+    ctr_fwhm_ideal = run_ideal(folder + "LYSO1110_TW.root")
+
+
     print "Ideal fwhm:" + str(ctr_fwhm_ideal)
+
+    dark_count_hz = 0.1
+    filename = "LYSO1110_TW_0p1Hz.root"
+    print "\n\n======================================================="
+    print folder + filename
+    print "======================================================="
+    ctr_fwhm, ctr_fwhm_dc_removed = run_test(folder + filename)
+
+    ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    ctr_fwhm_array_dc_removed = np.hstack((ctr_fwhm_array_dc_removed, np.array(ctr_fwhm_dc_removed)))
+    # ctr_fwhm_array_dc_removed2 = np.hstack((ctr_fwhm_array_dc_removed2, np.array(ctr_fwhm_dc_removed2)))
+
+    x = np.hstack((x, dark_count_hz))
+
     for i in range (0,4):
         for j in range(1,5,2):
             dark_count_hz = j*10**i
             if(dark_count_hz == 3000):
                 break
-            filename = "LYSO_1x1x3_TW_" + str(dark_count_hz) + "Hz.root"
+            filename = "LYSO1110_TW_" + str(dark_count_hz) + "Hz.root"
             print "\n\n======================================================="
             print folder+filename
             print "======================================================="
-            ctr_fwhm, ctr_fwhm_dc_removed, ctr_fwhm_dc_removed2= run_test(folder+filename)
+            ctr_fwhm, ctr_fwhm_dc_removed= run_test(folder+filename)
 
             ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
             ctr_fwhm_array_dc_removed = np.hstack((ctr_fwhm_array_dc_removed, np.array(ctr_fwhm_dc_removed)))
-            ctr_fwhm_array_dc_removed2 = np.hstack((ctr_fwhm_array_dc_removed2, np.array(ctr_fwhm_dc_removed2)))
+            #ctr_fwhm_array_dc_removed2 = np.hstack((ctr_fwhm_array_dc_removed2, np.array(ctr_fwhm_dc_removed2)))
 
             x = np.hstack((x, dark_count_hz))
 
@@ -231,7 +277,7 @@ def main_loop():
 
     plt.semilogx(x, ctr_fwhm_array, label='Dark count filter disabled', marker='x', markevery=0.06)
     plt.semilogx(x, ctr_fwhm_array_dc_removed, label='Dark count filter enabled', marker='o', markevery=0.06)
-    plt.semilogx(x, ctr_fwhm_array_dc_removed2, label='Dual window dark count filter', marker='_', markevery=0.06)
+    #plt.semilogx(x, ctr_fwhm_array_dc_removed2, label='Dual window dark count filter', marker='_', markevery=0.06)
 
     # plt.axhline(y=cramer_rao_limit, linestyle='dotted', label='Cramer Rao limit\n of the photodetector\n(with ' + str(max_order) + ' photons)')
     plt.xlabel('Dark count noise ($Hz/um^2$)')

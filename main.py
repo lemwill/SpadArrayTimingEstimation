@@ -114,10 +114,10 @@ def main_loop():
     #DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection2)
 
 #    DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
-    clock_skew_50ps = CClockSkew(clock_skew_std=15, array_size_x=event_collection2.x_array_size, array_size_y=event_collection2.y_array_size)
+    clock_skew_50ps = CClockSkew(clock_skew_std=100, array_size_x=event_collection2.x_array_size, array_size_y=event_collection2.y_array_size)
     clock_skew_50ps.apply(event_collection2)
 
-    clock_skew_50ps = CClockSkew(clock_skew_std=35, array_size_x=event_collection2.x_array_size, array_size_y=event_collection2.y_array_size)
+    clock_skew_50ps = CClockSkew(clock_skew_std=120, array_size_x=event_collection2.x_array_size, array_size_y=event_collection2.y_array_size)
     clock_skew_50ps.apply(event_collection2)
 
 

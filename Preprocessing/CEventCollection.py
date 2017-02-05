@@ -92,7 +92,7 @@ class CEventCollection(object):
 
         # Count the number of useful photons per event
         photon_count = np.ma.count(self.__timestamps, axis=1)
-        qty_photons_to_keep = int(np.floor(np.average(photon_count) - np.std(photon_count)))
+        qty_photons_to_keep = int(np.floor(np.average(photon_count) - 3*np.std(photon_count)))
 
         if(keep_all_events == True):
             qty_photons_to_keep = np.min(np.ma.count(self.__timestamps, axis=1))

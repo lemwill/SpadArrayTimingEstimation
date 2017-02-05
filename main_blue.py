@@ -40,6 +40,7 @@ def run_timing_algorithm(algorithm, event_collection):
 
 
 def main_loop():
+    plt.style.use('grayscale')
 
     # Parse input
     parser = argparse.ArgumentParser(description='Process data out of the Spad Simulator')
@@ -72,21 +73,21 @@ def main_loop():
 
     # TDC ----------------------------------------------------------------------------------------------------------
     # Apply TDC - Must be applied after making the coincidences because the coincidence adds a random time offset to pairs of events
-    tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=500, tdc_resolution=8,tdc_resolution_error_std=1, tdc_jitter_std=0, jitter_fine_std=0.7)
-    tdc.get_sampled_timestamps(event_collection_no_correction)
-    tdc.get_sampled_timestamps(event_collection_with_dark_count, correct_resolution=True)
+    #tdc = CTdc(system_clock_period_ps=4000, fast_oscillator_period_ps=500, tdc_resolution=8,tdc_resolution_error_std=0, tdc_jitter_std=0, jitter_fine_std=0.7)
+    #tdc.get_sampled_timestamps(event_collection_no_correction)
+    #tdc.get_sampled_timestamps(event_collection_with_dark_count, correct_resolution=True)
 
 
     # First photon discriminator -----------------------------------------------------------------------------------
-    DiscriminatorSingleWindow.DiscriminatorSingleWindow(event_collection_with_dark_count, window1=300, photon_order=4)
-    DiscriminatorSingleWindow.DiscriminatorSingleWindow(event_collection_no_correction, window1=4000, photon_order=5)
+    #DiscriminatorSingleWindow.DiscriminatorSingleWindow(event_collection_with_dark_count, window1=300, photon_order=4)
+    #DiscriminatorSingleWindow.DiscriminatorSingleWindow(event_collection_no_correction, window1=4000, photon_order=5)
 
     coincidence_collection = CCoincidenceCollection(event_collection_without_dark_count)
     coincidence_collection_with_dark_count = CCoincidenceCollection(event_collection_with_dark_count)
     coincidence_collection_no_correction = CCoincidenceCollection(event_collection_no_correction)
 
 
-    max_order = 33
+    max_order = 100
     ctr_fwhm_array = np.array([])
 
     if(max_order > coincidence_collection.qty_of_photons):
@@ -110,11 +111,11 @@ def main_loop():
     #marker = markers.next()
 
 
-    for i in range(1, max_order):
-        algorithm = CAlgorithmSinglePhoton(photon_count=i)
-        ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection_no_correction)
-        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(range(1, max_order), ctr_fwhm_array, label='Nth photon, no correction', marker='o', markevery=0.06)
+    # for i in range(0, max_order):
+    #     algorithm = CAlgorithmSinglePhoton(photon_count=i)
+    #     ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection_no_correction)
+    #     ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    # plt.plot(range(0, max_order), ctr_fwhm_array, label='Nth photon, no correction', marker='o', markevery=0.06)
 
 
     ctr_fwhm_array = np.array([])
@@ -122,7 +123,7 @@ def main_loop():
         algorithm = CAlgorithmSinglePhoton(photon_count=i)
         ctr_fwhm =run_timing_algorithm(algorithm, coincidence_collection_with_dark_count)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(range(1, max_order), ctr_fwhm_array, label='Nth photon with dark count', marker='_', markevery=0.06)
+    plt.plot(range(1, max_order), ctr_fwhm_array, label='Nth photon with dark count', marker='D', markevery=0.06)
 
    # ctr_fwhm_array = np.array([])
    # for i in range(1, max_order):
@@ -132,27 +133,27 @@ def main_loop():
    # plt.plot(ctr_fwhm_array, label='Mean', marker=marker)
    # marker = markers.next()
 
-    ctr_fwhm_array = np.array([])
-    for i in range(1, max_order):
-        algorithm = CAlgorithmBlue(coincidence_collection_no_correction, photon_count=i)
-        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection_no_correction)
-        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(range(1, max_order), ctr_fwhm_array , label='BLUE', marker='x', markevery=0.04)
+    # ctr_fwhm_array = np.array([])
+    # for i in range(0, max_order):
+    #     algorithm = CAlgorithmBlue(coincidence_collection_no_correction, photon_count=i)
+    #     ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection_no_correction)
+    #     ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    # plt.plot(range(0, max_order), ctr_fwhm_array , label='BLUE', marker='x', markevery=0.04)
+    #
+    # ctr_fwhm_array = np.array([])
+    # for i in range(0, max_order):
+    #     algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
+    #     ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
+    #     ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
+    # #plt.plot(range(1, max_order), ctr_fwhm_array , label='BLUE', marker='_', markevery=0.04)
+    # plt.axhline(y=ctr_fwhm, linestyle='--', label='No dark count')
 
     ctr_fwhm_array = np.array([])
-    for i in range(1, max_order):
-        algorithm = CAlgorithmBlue(coincidence_collection, photon_count=i)
-        ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
-        ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    #plt.plot(range(1, max_order), ctr_fwhm_array , label='BLUE', marker='D', markevery=0.04)
-    plt.axhline(y=ctr_fwhm, linestyle='--', label='No dark count')
-
-    ctr_fwhm_array = np.array([])
-    for i in range(1, max_order):
+    for i in range(2, max_order):
         algorithm = CAlgorithmBlue(coincidence_collection_with_dark_count, photon_count=i)
         ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection_with_dark_count)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
-    plt.plot(range(1, max_order), ctr_fwhm_array , label='BLUE with dark count', marker='<', markevery=0.04)
+    plt.plot(range(2, max_order), ctr_fwhm_array , label='BLUE with dark count', marker='x', markevery=0.04)
 
     #ctr_fwhm_array = np.array([])
     #for i in range(2, max_order):
@@ -186,6 +187,7 @@ def main_loop():
     axes = plt.gca()
     axes.set_ylim([90, 170])
     plt.rcParams.update({'font.size':16})
+
     plt.show()
 
     #for i in range(2, 16):

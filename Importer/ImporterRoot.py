@@ -16,7 +16,7 @@ class ImporterRoot:
     def __init__(self):
         pass
 
-    def import_data(self, filename, event_count=0, start = 0):
+    def import_data(self, filename, event_count=10000, start = 0):
         self.open_root_file(filename)
         return self.import_all_spad_events(event_count, start)
 
@@ -48,13 +48,12 @@ class ImporterRoot:
             if np.size(test_global_time) > 100000 or np.size(test_global_time)< max_elements:
                 continue
 
-            test_global_time = np.sort(test_global_time)
+            order = np.argsort(test_global_time)[0:max_elements]
 
-
-            global_time[valid_event_count, :] = test_global_time[0:max_elements]*1000
-            pixel_x_coord[valid_event_count, :] = np.array(self.tree.SpadX[0:max_elements])
-            pixel_y_coord[valid_event_count, :] = np.array(self.tree.SpadY[0:max_elements])
-            trigger_type[valid_event_count, :] = np.array(self.tree.TriggerType[0:max_elements])
+            global_time[valid_event_count, :] = test_global_time[order]*1000
+            pixel_x_coord[valid_event_count, :] = np.array(self.tree.SpadX)[order]
+            pixel_y_coord[valid_event_count, :] = np.array(self.tree.SpadY)[order]
+            trigger_type[valid_event_count, :] = np.array(self.tree.TriggerType)[order]
             event_ID[valid_event_count] = self.tree.Event
             photon_count[valid_event_count] = self.tree.PhotonCount
             spad_trigger_count[valid_event_count] = self.tree.SpadTriggeredCount
