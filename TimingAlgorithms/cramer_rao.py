@@ -10,25 +10,35 @@ def get_intrinsic_limit(coincidence_collection, photon_count):
     inverse_covariance = np.linalg.inv(covariance)
     sum_cov = np.sum(inverse_covariance)
     cramer_rao1 = np.sqrt(1/sum_cov)*2.35482004503
-    print cramer_rao1
+    #print cramer_rao1
 
     corrected_timestamps2 = coincidence_collection.detector1.timestamps[:, :photon_count] - coincidence_collection.detector1.interaction_time[:, None]
     covariance = np.cov(corrected_timestamps2[:, :photon_count], rowvar=0)
     inverse_covariance = np.linalg.inv(covariance)
     sum_cov = np.sum(inverse_covariance)
     cramer_rao2 = np.sqrt(1/sum_cov)*2.35482004503
-    print cramer_rao2
+    #print cramer_rao2
 
-    return np.sqrt(cramer_rao1*cramer_rao1+cramer_rao2*cramer_rao2)
+
+
 
     appended_timestamps = np.append(corrected_timestamps1, corrected_timestamps2, axis=1)
     covariance = np.cov(appended_timestamps[:, :photon_count*2], rowvar=0)
     inverse_covariance = np.linalg.inv(covariance)
     sum_cov = np.sum(inverse_covariance)
     cramer_rao = 2*np.sqrt(1/sum_cov)*2.35482004503
-    print cramer_rao
+    print "Cramer Rao" + str(cramer_rao)
 
     return cramer_rao
+
+    corrected_timestamps2 = coincidence_collection.detector1.timestamps[:, :photon_count] - coincidence_collection.detector2.timestamps[:, :photon_count]
+    covariance = np.cov(corrected_timestamps2[:, :photon_count], rowvar=0)
+    inverse_covariance = np.linalg.inv(covariance)
+    sum_cov = np.sum(inverse_covariance)
+    cramer_rao = np.sqrt(1/sum_cov)*2.35482004503
+    print cramer_rao
+    #return np.sqrt(cramer_rao1*cramer_rao1+cramer_rao2*cramer_rao2)
+
 
    # corrected_timestamps = coincidence_collection.detector2.timestamps[:, :photon_count] - coincidence_collection.detector2.interaction_time[:, None]
    # covariance = np.cov(corrected_timestamps[:, :photon_count], rowvar=0)

@@ -35,18 +35,17 @@ class CAlgorithmMLE(CAlgorithmBase):
         #x = x.append(y, axis=0)
         x = np.ma.append(x, y, axis=0)
 
-        #print x[:, 0:self.__photon_count]
-        #print self.__photon_count
         #hist, bins = np.histogram(x[:, 0:self.__photon_count], bins='auto')
         #plt.plot(bins[:-1], hist)
         #plt.show()
-        ind = np.linspace(0, 0 + 3000, 3000)
-        kernel = scipy.stats.gaussian_kde(x[:, 0:self.__photon_count].flatten())
-        self._kernel_pdf.append(np.log(kernel.evaluate(ind)))
+        ind = np.linspace(1000, 1000 + 3000, 3000)
+        for i in range(0,self.__photon_count):
+            kernel = scipy.stats.gaussian_kde(x[:, i], 0.1)
+            self._kernel_pdf.append(np.log(kernel.evaluate(ind)))
 
             #hist, bins = np.histogram(x[:, i], bins=3000)
             #plt.plot(bins[:-1], hist)
-            #self._kernel_pdf.append(np.log(hist))k
+            #self._kernel_pdf.append(np.log(hist))
 
            # self._kernel_pdf = np.log(self._kernel_pdf)
             #kernel = KernelDensity(kernel='gaussian', bandwidth=0.2).fit(x[:,0:10].flatten())
@@ -55,16 +54,17 @@ class CAlgorithmMLE(CAlgorithmBase):
 
         #hist, bins = np.histogram(x[:, 0], bins='auto')
         #plt.plot(bins[:-1], hist / float(np.sum(hist))/len(bins)*2)
-        # plt.show()
-        # plt.plot(ind, np.exp(self._kernel_pdf[0]), label='kde', color="g")
-        # plt.title('Kernel Density Estimation')
-        # plt.legend()
-        # plt.show()
+
+        #plt.plot(ind, self._kernel_pdf[0], label='kde', color="g")
+        #plt.title('Kernel Density Estimation')
+        #plt.legend()
+        #plt.show()
 
 
 
     def evaluate_collection_timestamps(self, coincidence_collection):
-        ind = np.linspace(-2000, 3000, 5000)
+
+        ind = np.linspace(-2000, 2000, 4000)
 
 
         nb_of_events = self._training_coincidence_collection.detector1.timestamps.shape[0]
@@ -73,16 +73,14 @@ class CAlgorithmMLE(CAlgorithmBase):
         timestamps_detector2 = np.zeros(nb_of_events)
 
         for j in range(0, nb_of_events):
-            result = np.zeros(5000)
+            result = np.zeros(4000)
 
             for i in range (0,self.__photon_count):
-                start = int(coincidence_collection.detector1.timestamps[j,i])-int(coincidence_collection.detector1.interaction_time[j])-50000
-
-                if(start > 0):
-                    #print start
-                    result[start+ 2000: start:-1] = result[start+ 2000: start:-1] + self._kernel_pdf[0][0:2000]
-                    result[0:start] = result[0:start]+ np.min(self._kernel_pdf[0][0])
-                    result[start+2000:] = result[start+2000:] + np.min(self._kernel_pdf[0][0])
+                start = int(coincidence_collection.detector1.timestamps[j,i])-int(coincidence_collection.detector1.interaction_time[j])-1000-50000
+                #print start
+                result[start+ 2000: start:-1] = result[start+ 2000: start:-1] + self._kernel_pdf[i][0:2000]
+                result[0:start] = self._kernel_pdf[i][0]
+                result[start+2000:] = self._kernel_pdf[i][0]
 
 
             exp = np.exp(result)
@@ -93,16 +91,13 @@ class CAlgorithmMLE(CAlgorithmBase):
 
 
         for j in range(0, nb_of_events):
-            result = np.zeros(5000)
+            result = np.zeros(4000)
 
             for i in range (0,self.__photon_count):
-                start = int(coincidence_collection.detector2.timestamps[j,i])-int(coincidence_collection.detector2.interaction_time[j])-50000
-
-                if(start > 0):
-
-                    result[start+ 2000: start:-1] = result[start + 2000: start:-1] + self._kernel_pdf[0][0:2000]
-                    result[0:start] = result[0:start]+ np.min(self._kernel_pdf[0][0])
-                    result[start+2000:] = result[start+2000:] + np.min(self._kernel_pdf[0][0])
+                start = int(coincidence_collection.detector2.timestamps[j,i])-int(coincidence_collection.detector2.interaction_time[j])-1000-50000
+                result[start+ 2000: start:-1] = result[start + 2000: start:-1] + self._kernel_pdf[i][0:2000]
+                result[0:start] = result[0:start] + self._kernel_pdf[i][2000]
+                result[start+2000:] = result[start+2000:] + self._kernel_pdf[i][0]
 
             exp = np.exp(result)
             exp[exp > 0.9] = 0
@@ -112,12 +107,12 @@ class CAlgorithmMLE(CAlgorithmBase):
             #print np.sum(np.exp(result))
             timestamps_detector2[j] = np.argmax(exp)+int(coincidence_collection.detector2.interaction_time[j])-2000
 
-        #print "STD:" +str(np.std(timestamps_detector2-timestamps_detector1))
+        print "STD:" +str(np.std(timestamps_detector2-timestamps_detector1))
 
-        # plt.plot(ind, exp, label='kde', color="g")
-        # plt.title('Result')
-        # plt.legend()
-        # plt.show()
+        #plt.plot(ind, exp, label='kde', color="g")
+        #plt.title('Result')
+        #plt.legend()
+        #plt.show()
 
         #timestamps_detector1 = np.dot(coincidence_collection.detector1.timestamps[:, :current_mlh_length], self._mlh_coefficients1)
         #timestamps_detector2 = np.dot(coincidence_collection.detector2.timestamps[:, :current_mlh_length], self._mlh_coefficients2)

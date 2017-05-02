@@ -243,7 +243,7 @@ class CEventCollection(object):
         self.__timestamps = self.__timestamps + interaction_time[:, None]
 
     def add_random_offset(self):
-        random_offset = np.random.randint(low=0, high=100000000, size=self.qty_of_events)/float(100)
+        random_offset = np.random.randint(low=0, high=10000000000, size=self.qty_of_events)/float(100)
         self.__interaction_time = random_offset
         random_offset = np.transpose(np.tile(random_offset, (self.qty_of_photons, 1)))
         self.__timestamps = self.__timestamps + random_offset

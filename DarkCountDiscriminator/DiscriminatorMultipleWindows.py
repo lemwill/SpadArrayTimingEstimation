@@ -1,6 +1,7 @@
 import numpy as np
 
 def DiscriminatorMultipleWindows(event_collection, windows):
+    #print event_collection
     for events in xrange(event_collection.timestamps.shape[0]):
        for photons in xrange(event_collection.timestamps.shape[1]-len(windows)):
            event_valid = 0
@@ -42,7 +43,7 @@ def DiscriminatorMultipleWindows(event_collection, windows):
 
     difference = np.diff(event_collection.timestamps)
 
-
+    #print event_collection.timestamps
     print "\n### Removing dark count with Dual Window Discriminator ###"
     event_collection.remove_masked_photons()
 #    CEventCollection.qty_spad_triggered

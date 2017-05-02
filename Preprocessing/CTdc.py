@@ -279,7 +279,7 @@ class CTdc:
             fine_total_jitter[fine_total_jitter==0] = 0.01
             fine_error = np.random.normal(loc=0.0, scale=fine_total_jitter)
         else:
-            fine_error = 0
+            fine_error = 0.0
 
         # Recalculate the fine counter
         fine_counter = np.divide(fine_time+fine_error, fine_oscillator_periods)

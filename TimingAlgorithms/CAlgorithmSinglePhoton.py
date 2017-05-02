@@ -5,7 +5,7 @@ from CAlgorithmBase import CAlgorithmBase
 
 class CAlgorithmSinglePhoton(CAlgorithmBase):
 
-    def __init__(self, photon_count):
+    def __init__(self, coincidence_collection, photon_count):
         self.__photon_count = photon_count
 
     @property

@@ -16,8 +16,9 @@ class ImporterRoot:
     def __init__(self):
         pass
 
-    def import_data(self, filename, event_count=10000, start = 0):
+    def import_data(self, filename, event_count=10000, start = 0, simulate_laser_pulse=False):
         self.open_root_file(filename)
+        self.simulate_laser_pulse = simulate_laser_pulse
         return self.import_all_spad_events(event_count, start)
 
 
@@ -60,10 +61,13 @@ class ImporterRoot:
             avalanche_count[valid_event_count] = self.tree.AvalancheCount
             valid_event_count += 1
 
+        if (self.simulate_laser_pulse == True):
+            global_time.fill(0)
+
         valid_event_count -= 1
         return CEventCollection(event_ID[0:valid_event_count], global_time[0:valid_event_count],
                                 spad_trigger_count[0:valid_event_count], trigger_type[0:valid_event_count],
-                                pixel_x_coord[0:valid_event_count], pixel_y_coord[0:valid_event_count])
+                                pixel_x_coord[0:valid_event_count], pixel_y_coord[0:valid_event_count], photon_count[0:valid_event_count])
 
     def import_true_energy(self, number_of_events=0, start=0):
         if number_of_events == 0:

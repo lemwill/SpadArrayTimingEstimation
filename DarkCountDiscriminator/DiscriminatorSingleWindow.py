@@ -13,6 +13,6 @@ def DiscriminatorSingleWindow(event_collection, window1=350, photon_order = 1):
 
 
 
-    print "\n### Removing dark count with Dual Window Discriminator ###"
+    print "\n### Removing dark count with Single Window Discriminator ###"
     event_collection.remove_masked_photons()
 #    CEventCollection.qty_spad_triggered

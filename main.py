@@ -57,8 +57,8 @@ def main_loop():
     # File import --------------------------------------------------------------------------------------------------
 
     importer = ImporterRoot()
-    event_collection = importer.import_data(args.filename, event_count=50000, start=1)
-    event_collection2 = importer.import_data(args.filename2, event_count=50000)
+    event_collection = importer.import_data(args.filename, event_count=25000)
+    event_collection2 = importer.import_data(args.filename2, event_count=25000, start=1000)
 
     # Energy discrimination ----------------------------------------------------------------------------------------
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=425, high_threshold_kev=700)
@@ -66,8 +66,8 @@ def main_loop():
 
 
     # Filtering of unwanted photon types ---------------------------------------------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
-    event_collection2.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False, remove_crosstalk=False, remove_masked_photons=True)
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
+    event_collection2.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=True, remove_crosstalk=True, remove_masked_photons=True)
 
 
     #event_collection.cut_pde_in_half()
@@ -110,14 +110,14 @@ def main_loop():
    # event_collection.apply_tdc_sharing( pixels_per_tdc_x=1, pixels_per_tdc_y=1)
 
     # First photon discriminator -----------------------------------------------------------------------------------
-    #DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
-    #DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection2)
+    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection)
+    DiscriminatorDualWindow.DiscriminatorDualWindow(event_collection2)
 
 #    DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
-    clock_skew_50ps = CClockSkew(clock_skew_std=100, array_size_x=event_collection2.x_array_size, array_size_y=event_collection2.y_array_size)
-    clock_skew_50ps.apply(event_collection2)
+    clock_skew_50ps = CClockSkew(clock_skew_std=100, array_size_x=event_collection.x_array_size, array_size_y=event_collection.y_array_size)
+    clock_skew_50ps.apply(event_collection)
 
-    clock_skew_50ps = CClockSkew(clock_skew_std=120, array_size_x=event_collection2.x_array_size, array_size_y=event_collection2.y_array_size)
+    clock_skew_50ps = CClockSkew(clock_skew_std=0, array_size_x=event_collection2.x_array_size, array_size_y=event_collection2.y_array_size)
     clock_skew_50ps.apply(event_collection2)
 
 
@@ -196,7 +196,7 @@ def main_loop():
         ctr_fwhm = run_timing_algorithm(algorithm, coincidence_collection)
         ctr_fwhm_array = np.hstack((ctr_fwhm_array, np.array(ctr_fwhm)))
     plt.plot(range(2, max_order), ctr_fwhm_array , label='BLUE iterative - 3 iterations')
-
+    algorithm.print_coefficients()
     #ctr_fwhm_array = np.array([])
     #for i in range(2, max_order):
     #    jitter = 70

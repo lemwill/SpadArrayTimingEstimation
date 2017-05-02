@@ -27,8 +27,4 @@ def import_data(event_count=1, min_tdc_x=0, max_tdc_x= 1, min_tdc_y=0, max_tdc_y
 
 
 
-    return CEventCollection(event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord, verbose=False)
-
-
-
-
+    return CEventCollection(event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord, 0)

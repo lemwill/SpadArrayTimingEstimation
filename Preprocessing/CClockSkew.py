@@ -26,6 +26,6 @@ class CClockSkew:
 
                 timestamps[np.logical_and(event_collection.pixel_x_coord == x, event_collection.pixel_y_coord == y)] = timestamps[np.logical_and(event_collection.pixel_x_coord == x, event_collection.pixel_y_coord == y)] + self.clk_skew[x][y]
 
-        event_collection.timestamps = timestamps
+        event_collection.timestamps = np.sort(timestamps)
 
 

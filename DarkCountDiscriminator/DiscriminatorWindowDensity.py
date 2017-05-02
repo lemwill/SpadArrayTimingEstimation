@@ -1,7 +1,7 @@
 import numpy as np
 
 #<<<<<<< HEAD
-def DiscriminatorWindowDensity(event_collection, time_window=4000, photon_threshold= 5):
+def DiscriminatorWindowDensity(event_collection, time_window=12000, photon_threshold= 10):
 
     for events in xrange(event_collection.timestamps.shape[0]):
         for photons in xrange(event_collection.timestamps.shape[1]-5):

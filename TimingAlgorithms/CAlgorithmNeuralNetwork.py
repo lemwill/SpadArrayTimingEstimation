@@ -4,16 +4,22 @@ import sys
 # import climate
 from CTimingEstimationResult import CTimingEstimationResult
 from CAlgorithmBase import CAlgorithmBase
+from sklearn.preprocessing import StandardScaler
 
 
 class CAlgorithmNeuralNetwork(CAlgorithmBase):
 
-    def __init__(self, training_event_collection, photon_count, hidden_layers):
+    def __init__(self, training_event_collection, photon_count, hidden_layers=0):
         self.__photon_count = photon_count
         self.__neural_network = None
-        self.__hidden_layers = hidden_layers
+        self.__scale = StandardScaler(with_mean=0, with_std=1)
+        if(hidden_layers == 0):
+            self.__hidden_layers = photon_count-1
+        else:
+            self.__hidden_layers = hidden_layers
         self.__event_collection = training_event_collection
         self.__train_network()
+
 
     @property
     def algorithm_name(self):
@@ -25,14 +31,19 @@ class CAlgorithmNeuralNetwork(CAlgorithmBase):
 
     def evaluate_collection_timestamps(self, coincidence_collection):
 
+
         neural_input_detector1 = coincidence_collection.detector1.timestamps[:, 1:self.photon_count] \
                        - coincidence_collection.detector1.timestamps[:, 0:1]
+
+        neural_input_detector1 = self.__scale.transform(neural_input_detector1)
 
         timestamps_detector1 = np.matrix(self.__neural_network.network.predict(neural_input_detector1) \
                 + coincidence_collection.detector1.timestamps[:, 0:1])
 
         neural_input_detector2 = coincidence_collection.detector2.timestamps[:, 1:self.photon_count] \
                        - coincidence_collection.detector2.timestamps[:, 0:1]
+
+        neural_input_detector2 = self.__scale.transform(neural_input_detector2)
 
         timestamps_detector2 = np.matrix(self.__neural_network.network.predict(neural_input_detector2) \
                 + coincidence_collection.detector2.timestamps[:,0:1])
@@ -79,8 +90,24 @@ class CAlgorithmNeuralNetwork(CAlgorithmBase):
 
         neural_input = self.__event_collection.detector1.timestamps[:, 1:self.photon_count] \
                        - self.__event_collection.detector1.timestamps[:, 0:1]
-        neural_target = np.transpose(np.matrix(self.__event_collection.detector1.interaction_time.ravel()-self.__event_collection.detector1.timestamps[:, 0:1].ravel()))
 
+
+        neural_target = np.transpose(np.matrix(self.__event_collection.detector1.interaction_time.ravel()-self.__event_collection.detector1.timestamps[:, 0:1].ravel())+50000)
+
+        neural_input2 = self.__event_collection.detector2.timestamps[:, 1:self.photon_count] \
+                       - self.__event_collection.detector2.timestamps[:, 0:1]
+
+        neural_target2 = np.transpose(np.matrix(
+            self.__event_collection.detector2.interaction_time.ravel() - self.__event_collection.detector2.timestamps[:,
+                                                                         0:1].ravel())+50000)
+
+        neural_input = np.append(neural_input, neural_input2, axis=0)
+        neural_target = np.append(neural_target, neural_target2, axis=0)
+
+        self.__scale.fit(neural_input, neural_target)
+        neural_input = self.__scale.transform(neural_input)
+
+        print neural_input
         self.__neural_network = theanets.Experiment(
             # Neural network for regression (sigmoid hidden, linear output)
             theanets.Regressor,
@@ -89,11 +116,19 @@ class CAlgorithmNeuralNetwork(CAlgorithmBase):
         )
 
         i = 0
-        for train, valid in self.__neural_network.itertrain([neural_input, neural_target], optimize='rmsprop'):
+
+
+        #for train, valid in self.__neural_network.itertrain([neural_input, neural_target], algorithm='rmsprop', learning_rate=0.0001, momentum=0.9):
+
+
+        for train, valid in self.__neural_network.itertrain([neural_input, neural_target], algorithm='rmsprop', patience=10, learning_rate=0.0001, momentum=0.99):
+        #        for train, valid in self.__neural_network.itertrain([neural_input, neural_target], algorithm='esgd'):
+
             sys.stdout.write('\rNeural network with %d inputs, %d hidden layers - Iteration %d: Training error: %f ' %
                              (self.photon_count - 1, self.__hidden_layers, i, np.sqrt(train['err']) /(np.sqrt(2)/2)))
-            i += 1
             sys.stdout.flush()
+
+            i += 1
 
 
 CAlgorithmBase.register(CAlgorithmNeuralNetwork)

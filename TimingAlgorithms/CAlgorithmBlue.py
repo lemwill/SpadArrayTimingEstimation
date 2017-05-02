@@ -37,6 +37,10 @@ class CAlgorithmBlue(CAlgorithmBase):
             w = np.dot(unity, inverse_covariance)
             n = np.dot(w, unity.T)
             self._mlh_coefficients1 = w / n
+
+            #self._mlh_coefficients1 = abs(self._mlh_coefficients1) / np.sum(abs(self._mlh_coefficients1))
+            #self._mlh_coefficients2 = abs(self._mlh_coefficients2) / np.sum(abs(self._mlh_coefficients2))
+
         else:
             self._mlh_coefficients1 = [1]
             self._mlh_coefficients2 = [1]
@@ -55,7 +59,8 @@ class CAlgorithmBlue(CAlgorithmBase):
 
     def print_coefficients(self):
         self._calculate_coefficients()
-        print(self._mlh_coefficients)
+        print "Printing coefficients"
+        print(self._mlh_coefficients1)
 
 CAlgorithmBase.register(CAlgorithmBlue)
 assert issubclass(CAlgorithmBlue, CAlgorithmBase)
