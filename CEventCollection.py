@@ -113,8 +113,8 @@ class CEventCollection:
             qty_photons_to_keep = int(np.floor(np.average(photon_count) -2*np.std(photon_count)))
 
         if (qty_photons_to_keep <= 0):
-            raise ValueError("Quantity of photons to keep is negative, too much variation. "
-                             "Please check your discriminator.")
+            raise ValueError("Quantity of photons to keep is negative({0}), too much variation. "
+                             "Please check your discriminator.".format(qty_photons_to_keep))
 
         keep_mask = (photon_count >= qty_photons_to_keep)
 

@@ -22,7 +22,7 @@ from Importer.ImporterROOT import ImporterRoot
 from DarkCountDiscriminator import DiscriminatorDualWindow
 import matplotlib.mlab as mlab
 
-def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.NaN):
+def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.NaN, tdc_res=np.NaN):
     # File import -----------------------------------------------------------
     importer = ImporterRoot()
     importer.open_root_file(filename)
@@ -46,9 +46,10 @@ def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.N
 
     # Apply TDC - Must be applied after making the coincidences because the
     # coincidence adds a random time offset to pairs of events
-    #tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=1, tdc_jitter_std=1)
-    #tdc.get_sampled_timestamps(event_collection)
-    #tdc.get_sampled_timestamps(coincidence_collection.detector2)
+    if tdc_res!= np.NaN:
+        tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=tdc_res, tdc_jitter_std=tdc_res)
+        tdc.get_sampled_timestamps(event_collection)
+        #tdc.get_sampled_timestamps(coincidence_collection.detector2)
 
     # First photon discriminator ---------------------------------------------
     # DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
@@ -100,15 +101,15 @@ def get_er_for_time_threshold(event_coll, timing_thld, mip=50):
     return error_rate, conf_mat, estimation_photopeak
 
 
-def get_conf_mat_wrapper(filename, step, event_count, dcr_thld_list):
+def get_conf_mat_wrapper(filename, step, event_count, thld_list, tdc_res=np.NaN):
 
     #filename, step, event_count, dcr_thld_list = state
     print("Entered function {0}".format(step))
-    event_coll, coincidence_coll = collection_procedure(filename, event_count, start=step)
+    event_coll, coincidence_coll = collection_procedure(filename, event_count, start=step, tdc_res=tdc_res)
     CEnergyDiscrimination.get_linear_energy_spectrum(event_coll, 128)
 
     dcr_error_rate, dcr_conf_mat, estimation_photopeak = \
-        get_er_for_time_threshold(event_coll, dcr_thld_list)
+        get_er_for_time_threshold(event_coll, thld_list)
     print("End function {0}".format(step))
     return dcr_conf_mat
 
@@ -202,11 +203,50 @@ def main_loop():
     h=plt.figure()
     for i, m in enumerate(['d', 'o', '^', 's']):
         plt.plot(pde_list, 100 * all_pde_error_rate[:,i], marker=m, linewidth=2)
-    plt.xlabel(u"PDE (%)")
-    plt.ylabel("Error rate (%)")
+    plt.xlabel(u"Efficacité de détection (%)")
+    plt.ylabel("Taux d'erreur (%)")
     plt.legend(["250 keV", "300 keV", "350 keV", "400 keV"], loc='upper right')
     h.set_size_inches((3,1))
-    plt.savefig("PDE_error_rate", transparent=True, format="png")
+    plt.savefig("PDE_error_rate_FR", transparent=True, format="png")
+
+    # result_file="/home/cora2406/FirstPhotonEnergy/results/tdc_thlds.npz"
+    # data = np.load(result_file)
+    # tdc_list = data['tdc_list']
+    # tdc_thld_list=data['tdc_thld_list']
+    #
+    # all_tdc_error_rate = np.zeros((np.size(tdc_list), 4))
+    # all_tdc_conf_mat = np.zeros((np.size(tdc_list), 4, 4))
+    #
+    # for i, tdc in enumerate(tdc_list):
+    #     for step in range(event_start, last_event, event_count*4):
+    #         pool = multiprocessing.Pool(processes=4)
+    #         tdc_local = tdc_thld_list[i, :]
+    #         filename = "/home/cora2406/FirstPhotonEnergy/spad_events/LYSO1110_TW.root"
+    #         state = ((filename, step, event_count, tdc_local, tdc))
+    #         result1 = pool.apply_async(get_conf_mat_wrapper, state)
+    #         state = ((filename, step+event_count, event_count, tdc_local,tdc))
+    #         result2 = pool.apply_async(get_conf_mat_wrapper, state)
+    #         state = ((filename, step+2*event_count, event_count, tdc_local,tdc))
+    #         result3 = pool.apply_async(get_conf_mat_wrapper, state)
+    #         state = ((filename, step+3*event_count, event_count, tdc_local,tdc))
+    #         result4 = pool.apply_async(get_conf_mat_wrapper, state)
+    #
+    #         all_tdc_conf_mat[i,:,:] += result1.get()+result2.get()+result3.get()+result4.get()
+    #
+    #     # print(step, dcr_conf_mat[3,0], all_dcr_conf_mat[:,3,0])
+    #
+    # total_events=np.sum(all_tdc_conf_mat, axis=2)
+    # print(total_events)
+    # all_tdc_error_rate[:,:] = (all_tdc_conf_mat[:,:,2]+all_tdc_conf_mat[:,:,3])/total_events[:,:]
+    #
+    # h=plt.figure()
+    # for i, m in enumerate(['d', 'o', '^', 's']):
+    #     plt.plot(tdc_list, 100 * all_tdc_error_rate[:,i], marker=m, linewidth=2)
+    # plt.xlabel(u"TDC resolution (ps)")
+    # plt.ylabel("Error rate (%)")
+    # plt.legend(["250 keV", "300 keV", "350 keV", "400 keV"], loc='upper left')
+    # h.set_size_inches((3,1))
+    # plt.savefig("PDE_error_rate", transparent=True, format="png")
 
     plt.show()
 
