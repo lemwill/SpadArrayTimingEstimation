@@ -1,3 +1,6 @@
+# ! /usr/bin/env python
+# coding=utf-8
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
@@ -50,15 +53,22 @@ def fit_photopeak(energy_spectrum, bins = 256):
     return photopeak_mean, photopeak_sigma, photopeak_amplitude
 
 
-def display_energy_spectrum(event_collection, histogram_bins_qty = 256):
+def display_energy_spectrum(event_collection, histogram_bins_qty = 256, display=True):
 
     photopeak_mean, photopeak_sigma, photopeak_amplitude = fit_photopeak(event_collection.qty_spad_triggered, bins = histogram_bins_qty)
 
     x = np.linspace(0, 2000, 2000)
+    plt.figure()
     plt.hist(event_collection.qty_spad_triggered, bins=histogram_bins_qty)
     plt.plot(x, photopeak_amplitude*mlab.normpdf(x,photopeak_mean,photopeak_sigma))
-
-    plt.show()
+    plt.xlabel(u'Nombre de photons détectés')
+    plt.ylabel(u"Nombre d'évènements")
+    top = max(photopeak_amplitude*mlab.normpdf(x,photopeak_mean,photopeak_sigma))
+    plt.text(50, top/2,
+             u"Résolution en \n énergie : {0:.2f} %".format(event_collection.get_energy_resolution()))
+    plt.tick_params(direction='in')
+    if display:
+        plt.show()
 
 def get_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_energy = 511):
 
@@ -86,17 +96,20 @@ def get_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_
 
     return [kev_peak_amplitude, kev_peak_sigma]
 
-def display_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_energy = 511):
+def display_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_energy = 511, display=True):
 
     [kev_peak_amplitude, kev_peak_sigma] = get_linear_energy_spectrum(event_collection, histogram_bins_qty, peak_energy)
     plt.figure()
     plt.hist(event_collection.kev_energy, bins=histogram_bins_qty)
     x = np.linspace(0, 700, 700)
     plt.plot(x, kev_peak_amplitude*mlab.normpdf(x,peak_energy, kev_peak_sigma), 'r', linewidth=3)
-    plt.xlabel('Energy (keV)')
-    plt.ylabel("Number of events")
-    plt.text(100, kev_peak_amplitude/2, "Energy resolution : {0:.2f} %".format(event_collection.get_linear_energy_resolution()))
-    plt.show()
+    plt.xlabel(u'Énergie (keV)')
+    plt.ylabel(u"Nombre d'évènements")
+    top = max(kev_peak_amplitude*mlab.normpdf(x,peak_energy, kev_peak_sigma))
+    plt.text(50, 2*top/3, u"Résolution en \n énergie : {0:.2f} %".format(event_collection.get_linear_energy_resolution()), wrap=True)
+    plt.tick_params(direction='in')
+    if display:
+        plt.show()
 
 def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_kev):
 
@@ -113,13 +126,26 @@ def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_k
     keep_list = (spad_triggered > low_threshold_spad_triggered) & (spad_triggered < high_threshold_spad_triggered)
 
     event_collection.delete_events(keep_list)
-
-    event_collection.set_energy_resolution(100*photopeak_sigma*(2*np.sqrt(2*np.log(2)))/photopeak_mean)
+    event_collection.set_energy_resolution(100 * photopeak_sigma * (2 * np.sqrt(2 * np.log(2))) / photopeak_mean)
 
     print("Events with under {0} kev or over {1} kev have been removed. There are {2} events left".format(low_threshold_kev, high_threshold_kev, event_collection.qty_of_events))
     print("Energy resolution is {0:.2f} %".format(event_collection.get_energy_resolution()))
 
     return low_threshold_spad_triggered, high_threshold_spad_triggered
+
+def discriminate_by_linear_energy(event_collection, low_threshold_kev, high_threshold_kev):
+
+    print "\n#### Applying linear energy discrimination ####"
+
+    kev_energy = event_collection.kev_energy
+    keep_list = (kev_energy > low_threshold_kev) & (kev_energy < high_threshold_kev)
+
+    event_collection.delete_events(keep_list)
+
+    print("Events with under {0} kev or over {1} kev have been removed. There are {2} events left".format(low_threshold_kev, high_threshold_kev, event_collection.qty_of_events))
+    print("Energy resolution is {0:.2f} %".format(event_collection.get_energy_resolution()))
+
+    return
 
 class CEnergyDiscrimination:
 
