@@ -14,6 +14,7 @@ import matplotlib.mlab as mlab
 import multiprocessing
 from scipy.optimize import curve_fit
 
+
 ## Importers
 from Importer.ImporterROOT import ImporterRoot
 from DarkCountDiscriminator import DiscriminatorDualWindow
@@ -94,7 +95,8 @@ def main_loop():
 
     energy_spectrum_y_axis, energy_spectrum_x_axis = np.histogram(time_collection.kev_energy, bins=55)
     popt, pcov = curve_fit(gaussian, energy_spectrum_x_axis[1:], energy_spectrum_y_axis, p0=(511, 20, 1000))
-    print(popt)
+    fwhm_ratio = 2*np.sqrt(2*np.log(2))
+    energy_resolution = (100*popt[1]*fwhm_ratio)/511.0
 
     plt.figure()
     plt.hist(time_collection.kev_energy, bins=55)
@@ -104,7 +106,7 @@ def main_loop():
     plt.ylabel(u"Nombre d'évènements")
     top = max(popt[2]*mlab.normpdf(x, popt[0], popt[1]))
     plt.text(50, top/2,
-             u"Résolution en \n énergie : {0:.2f} %".format(time_collection.get_linear_energy_resolution()), wrap=True)
+             u"Résolution en \n énergie : {0:.2f} %".format(energy_resolution), wrap=True)
     plt.tick_params(direction='in')
     plt.show()
 

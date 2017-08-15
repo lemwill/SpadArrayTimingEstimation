@@ -39,7 +39,7 @@ def progressbar(it, count = 0, stride = 0, prefix = "", size = 50):
 
     def _show(_i):
         x = int(size*_i/count)
-        sys.stdout.write("%s [%s%s] %i/%i\r" % (prefix, "#"*x, "."*(size-x), _i, count))
+        sys.stdout.write("\r%s [%s%s] %i/%i" % (prefix, "#"*x, "."*(size-x), _i, count))
         sys.stdout.flush()
 
 
@@ -47,9 +47,9 @@ def progressbar(it, count = 0, stride = 0, prefix = "", size = 50):
     for i, item in enumerate(it):
         yield item
         if(i % stride == 0 or (i-1) == count):
-            _show(i+1)
+            _show(i)
 
-    sys.stdout.write("%s [%s%s] %i/%i\r" % (prefix, "#"*size, "."*(0), count, count))
+    sys.stdout.write("\r%s [%s%s] %i/%i" % (prefix, "#"*size, "."*(0), count, count))
     #sys.stdout.write("\n")
     sys.stdout.flush()
 

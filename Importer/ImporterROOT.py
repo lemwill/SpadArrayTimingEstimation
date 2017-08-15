@@ -2,10 +2,11 @@
 # coding=utf-8
 __author__ = 'acorbeil'
 
+import numpy as np
 from ROOT import TFile
 from Importer import ImporterUtilities
 from CEventCollection import CEventCollection
-import numpy as np
+from TimingAlgorithms.UtilityFunctions import progressbar
 
 
 class ImporterRoot:
@@ -36,7 +37,8 @@ class ImporterRoot:
         avalanche_count = np.zeros(number_of_events)
 
         valid_event_count = 0
-        for event_id in range(start, number_of_events+start):
+        for event_id in progressbar(range(start, number_of_events+start), count=number_of_events,
+                                    prefix="Loading events"):
             self.tree.GetEntry(event_id)
             test_global_time = np.array(self.tree.GlobalTime[:])
             if np.size(test_global_time) > 100000 or np.size(test_global_time)< max_elements:
