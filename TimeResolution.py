@@ -7,6 +7,8 @@ from CCoincidenceCollection import CCoincidenceCollection
 import CEnergyDiscrimination
 from CTdc import CTdc
 import numpy as np
+import os
+import argparse
 import copy
 import matplotlib
 import matplotlib.pyplot as plt
@@ -36,7 +38,7 @@ def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.N
     print("#### Opening file ####")
     print(filename)
     print("Starting at {0}, loading {1} events".format(start, number_of_events))
-    event_collection = importer.import_all_spad_events(number_of_events, start)
+    event_collection = importer.import_all_spad_events(number_of_events, start, max_elements=8)
     # Energy discrimination -------------------------------------------------
     event_collection.remove_events_with_too_many_photons()
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=0,
@@ -67,6 +69,11 @@ def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.N
 
     return event_collection, coincidence_collection
 
+parser = argparse.ArgumentParser()
+parser.add_argument('iter', type=int, help="Number of events to simulate. The numbered events MUST be available")
+parser.add_argument('-e', '--EventFile', type=str, default='example.root', help="Path and name of the Geant4 event file")
+args = parser.parse_args()
+
 def main_loop():
     matplotlib.rc('xtick', labelsize=16)
     matplotlib.rc('ytick', labelsize=16)
@@ -75,31 +82,38 @@ def main_loop():
             'size': 16}
     matplotlib.rc('font', **font)
 
-    event_count = 50000
-    event_start = 0
-    last_event = 5000
+    localdirin = os.getenv('PARALLEL_SCRATCH_MP2_WIPE_ON_AUGUST_2017', '/home/cora2406/DalsaSimThese/G4')
+    localdirout = os.getenv('LSCRATCH', '/home/cora2406/DalsaSimThese/Results')
+    root_event_file = localdirin+'/'+args.EventFile
+
+    event_count = args.iter
     lower_kev = 400
     higher_kev = 700
 
-    filename = "/home/cora2406/DalsaSimThese/G4/LYSO1x1x10_TW_BASE_S50_OB3.root"
+    #filename = "/home/cora2406/DalsaSimThese/G4/LYSO1x1x10_TW_BASE_S50_OB3.root"
 
-    event_collection, coincidence_collection = collection_procedure(filename, event_count)
-    time_collection = copy.deepcopy(event_collection)
-    CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=128, display=False)
+    event_collection, coincidence_collection = collection_procedure(root_event_file, event_count)
+    second_collection = copy.deepcopy(event_collection)
+    non_lin_fig_name = localdirout + "/Energie_BASE_S50_OB3_nonlineaire_complet"
+    CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=128,
+                                                  display=False, save_figure_name=non_lin_fig_name)
     CEnergyDiscrimination.discriminate_by_energy(event_collection, lower_kev, higher_kev)
-    CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=55, display=False)
+    non_lin_fig_name = localdirout + "/Energie_BASE_S50_OB3_nonlineaire_discrimination400kev"
+    CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=55,
+                                                  display=False, save_figure_name=non_lin_fig_name)
 
-    CEnergyDiscrimination.get_linear_energy_spectrum(time_collection, 128)
-    CEnergyDiscrimination.display_linear_energy_spectrum(time_collection, histogram_bins_qty=128, display=False)
-    CEnergyDiscrimination.discriminate_by_linear_energy(time_collection, lower_kev, higher_kev)
+    lin_fig_name=localdirout+"/Energie_BASE_S50_OB3_lineaire_complet"
+    CEnergyDiscrimination.display_linear_energy_spectrum(second_collection, histogram_bins_qty=128,
+                                                         display=False, save_figure_name=lin_fig_name)
+    CEnergyDiscrimination.discriminate_by_linear_energy(second_collection, lower_kev, higher_kev)
 
-    energy_spectrum_y_axis, energy_spectrum_x_axis = np.histogram(time_collection.kev_energy, bins=55)
-    popt, pcov = curve_fit(gaussian, energy_spectrum_x_axis[1:], energy_spectrum_y_axis, p0=(511, 20, 1000))
+    energy_spectrum_y_axis, energy_spectrum_x_axis = np.histogram(second_collection.kev_energy, bins=55)
+    popt, pcov = curve_fit(gaussian, energy_spectrum_x_axis[1:], energy_spectrum_y_axis, p0=[511, 20, 1000])
     fwhm_ratio = 2*np.sqrt(2*np.log(2))
     energy_resolution = (100*popt[1]*fwhm_ratio)/511.0
 
-    plt.figure()
-    plt.hist(time_collection.kev_energy, bins=55)
+    plt.figure(figsize=(8, 6))
+    plt.hist(second_collection.kev_energy, bins=55)
     x = np.linspace(0, 700, 700)
     plt.plot(x, popt[2]*mlab.normpdf(x, popt[0], popt[1]), 'r', linewidth=3)
     plt.xlabel(u'Énergie (keV)')
@@ -108,7 +122,8 @@ def main_loop():
     plt.text(50, top/2,
              u"Résolution en \n énergie : {0:.2f} %".format(energy_resolution), wrap=True)
     plt.tick_params(direction='in')
-    plt.show()
+    plt.savefig(localdirout+"/Energie_BASE_S50_OB3_lineaire_discrimination400keV", format="png", bbox="tight")
+    #plt.show()
 
     #time_coincidence_collection = CCoincidenceCollection(event_collection)
 

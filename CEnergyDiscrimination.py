@@ -53,7 +53,7 @@ def fit_photopeak(energy_spectrum, bins = 256):
     return photopeak_mean, photopeak_sigma, photopeak_amplitude
 
 
-def display_energy_spectrum(event_collection, histogram_bins_qty = 256, display=True):
+def display_energy_spectrum(event_collection, histogram_bins_qty = 256, display=True, save_figure_name=""):
 
     photopeak_mean, photopeak_sigma, photopeak_amplitude = fit_photopeak(event_collection.qty_spad_triggered, bins = histogram_bins_qty)
 
@@ -69,6 +69,9 @@ def display_energy_spectrum(event_collection, histogram_bins_qty = 256, display=
     plt.tick_params(direction='in')
     if display:
         plt.show()
+    if not save_figure_name == "":
+        plt.savefig(save_figure_name, format="png", bbox="tight")
+
 
 def get_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_energy = 511):
 
@@ -96,10 +99,12 @@ def get_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_
 
     return [kev_peak_amplitude, kev_peak_sigma]
 
-def display_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_energy = 511, display=True):
+
+def display_linear_energy_spectrum(event_collection, histogram_bins_qty=128,
+                                   peak_energy=511, display=True, save_figure_name=""):
 
     [kev_peak_amplitude, kev_peak_sigma] = get_linear_energy_spectrum(event_collection, histogram_bins_qty, peak_energy)
-    plt.figure()
+    plt.figure(figsize=(8, 6))
     plt.hist(event_collection.kev_energy, bins=histogram_bins_qty)
     x = np.linspace(0, 700, 700)
     plt.plot(x, kev_peak_amplitude*mlab.normpdf(x,peak_energy, kev_peak_sigma), 'r', linewidth=3)
@@ -110,6 +115,9 @@ def display_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, p
     plt.tick_params(direction='in')
     if display:
         plt.show()
+    if not save_figure_name == "":
+        plt.savefig(save_figure_name, format="png", bbox="tight")
+
 
 def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_kev):
 
@@ -133,6 +141,7 @@ def discriminate_by_energy(event_collection, low_threshold_kev, high_threshold_k
 
     return low_threshold_spad_triggered, high_threshold_spad_triggered
 
+
 def discriminate_by_linear_energy(event_collection, low_threshold_kev, high_threshold_kev):
 
     print "\n#### Applying linear energy discrimination ####"
@@ -146,6 +155,7 @@ def discriminate_by_linear_energy(event_collection, low_threshold_kev, high_thre
     print("Energy resolution is {0:.2f} %".format(event_collection.get_energy_resolution()))
 
     return
+
 
 class CEnergyDiscrimination:
 
