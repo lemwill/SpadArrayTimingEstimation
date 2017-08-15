@@ -1,4 +1,4 @@
-# ! /usr/bin/env python
+#!/usr/bin/env python
 # coding=utf-8
 __author__ = 'acorbeil'
 
@@ -40,7 +40,7 @@ def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.N
     print("Starting at {0}, loading {1} events".format(start, number_of_events))
     event_collection = importer.import_all_spad_events(number_of_events, start, max_elements=8)
     # Energy discrimination -------------------------------------------------
-    event_collection.remove_events_with_too_many_photons()
+    event_collection.remove_events_with_too_many_photons(max_photons=12000)
     CEnergyDiscrimination.discriminate_by_energy(event_collection, low_threshold_kev=0,
                                                  high_threshold_kev=700)
 
@@ -94,15 +94,15 @@ def main_loop():
 
     event_collection, coincidence_collection = collection_procedure(root_event_file, event_count)
     second_collection = copy.deepcopy(event_collection)
-    non_lin_fig_name = localdirout + "/Energie_BASE_S50_OB3_nonlineaire_complet"
+    non_lin_fig_name = localdirout + "/Energie_BASE_S100_OB3_nonlineaire_complet"
     CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=128,
                                                   display=False, save_figure_name=non_lin_fig_name)
     CEnergyDiscrimination.discriminate_by_energy(event_collection, lower_kev, higher_kev)
-    non_lin_fig_name = localdirout + "/Energie_BASE_S50_OB3_nonlineaire_discrimination400kev"
+    non_lin_fig_name = localdirout + "/Energie_BASE_S100_OB3_nonlineaire_discrimination400kev"
     CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=55,
                                                   display=False, save_figure_name=non_lin_fig_name)
 
-    lin_fig_name=localdirout+"/Energie_BASE_S50_OB3_lineaire_complet"
+    lin_fig_name=localdirout+"/Energie_BASE_S100_OB3_lineaire_complet"
     CEnergyDiscrimination.display_linear_energy_spectrum(second_collection, histogram_bins_qty=128,
                                                          display=False, save_figure_name=lin_fig_name)
     CEnergyDiscrimination.discriminate_by_linear_energy(second_collection, lower_kev, higher_kev)
@@ -122,8 +122,8 @@ def main_loop():
     plt.text(50, top/2,
              u"Résolution en \n énergie : {0:.2f} %".format(energy_resolution), wrap=True)
     plt.tick_params(direction='in')
-    plt.savefig(localdirout+"/Energie_BASE_S50_OB3_lineaire_discrimination400keV", format="png", bbox="tight")
-    #plt.show()
+    plt.savefig(localdirout+"/Energie_BASE_S100_OB3_lineaire_discrimination400keV", format="png", bbox="tight")
+    plt.show()
 
     #time_coincidence_collection = CCoincidenceCollection(event_collection)
 

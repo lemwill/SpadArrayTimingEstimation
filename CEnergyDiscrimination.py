@@ -40,8 +40,13 @@ def fit_photopeak(energy_spectrum, bins = 256):
     approx_photopeak_on_x_axis = energy_spectrum_x_axis[approx_photopeak_bin[0][0]]
 
     # Curve fit on 511 keV peak
-    popt, pcov = curve_fit(gaussian_fit, energy_spectrum_x_axis[GaussLowerBound:GaussUpperBound], energy_spectrum_y_axis[GaussLowerBound:GaussUpperBound],
+    try:
+        popt, pcov = curve_fit(gaussian_fit, energy_spectrum_x_axis[GaussLowerBound:GaussUpperBound], energy_spectrum_y_axis[GaussLowerBound:GaussUpperBound],
                            p0=(approx_photopeak_on_x_axis, 50, np.max(energy_spectrum_y_axis)))
+    except RuntimeError:
+        popt, pcov = curve_fit(gaussian_fit, energy_spectrum_x_axis[GaussLowerBound:GaussUpperBound],
+                               energy_spectrum_y_axis[GaussLowerBound:GaussUpperBound],
+                               p0=(approx_photopeak_on_x_axis, 50, np.max(energy_spectrum_y_axis)), ftol=1e-5)
 
     if(popt[0] < 0):
         raise ValueError('Energy fit failed, peak position cannot be negative')
@@ -86,7 +91,6 @@ def get_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_
     linear_energy = exp_func(event_collection.qty_spad_triggered, fit_a, fit_b, fit_c)
 
     photopeak_mean, photopeak_sigma, photopeak_amplitude = fit_photopeak(linear_energy, bins = histogram_bins_qty)
-
     k = peak_energy/photopeak_mean
     event_collection.set_kev_energy(linear_energy*k)
     kev_peak_sigma = k*photopeak_sigma
