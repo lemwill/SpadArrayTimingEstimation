@@ -3,6 +3,8 @@
 __author__ = 'acorbeil'
 
 ## Utilities
+import matplotlib
+matplotlib.use("agg")
 from CCoincidenceCollection import CCoincidenceCollection
 import CEnergyDiscrimination
 from CTdc import CTdc
@@ -10,7 +12,6 @@ import numpy as np
 import os
 import argparse
 import copy
-import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 import multiprocessing
@@ -90,19 +91,19 @@ def main_loop():
     lower_kev = 400
     higher_kev = 700
 
-    #filename = "/home/cora2406/DalsaSimThese/G4/LYSO1x1x10_TW_BASE_S50_OB3.root"
+    filename = "/"+args.EventFile[0:-5]
 
     event_collection, coincidence_collection = collection_procedure(root_event_file, event_count)
     second_collection = copy.deepcopy(event_collection)
-    non_lin_fig_name = localdirout + "/Energie_BASE_S100_OB3_nonlineaire_complet"
+    non_lin_fig_name = localdirout + filename + "_Energie_NLC.png"
     CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=128,
                                                   display=False, save_figure_name=non_lin_fig_name)
     CEnergyDiscrimination.discriminate_by_energy(event_collection, lower_kev, higher_kev)
-    non_lin_fig_name = localdirout + "/Energie_BASE_S100_OB3_nonlineaire_discrimination400kev"
+    non_lin_fig_name = localdirout + filename + "_Energie_NLD.png"
     CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=55,
                                                   display=False, save_figure_name=non_lin_fig_name)
 
-    lin_fig_name=localdirout+"/Energie_BASE_S100_OB3_lineaire_complet"
+    lin_fig_name = localdirout + filename + "_Energie_LC.png"
     CEnergyDiscrimination.display_linear_energy_spectrum(second_collection, histogram_bins_qty=128,
                                                          display=False, save_figure_name=lin_fig_name)
     CEnergyDiscrimination.discriminate_by_linear_energy(second_collection, lower_kev, higher_kev)
@@ -111,6 +112,7 @@ def main_loop():
     popt, pcov = curve_fit(gaussian, energy_spectrum_x_axis[1:], energy_spectrum_y_axis, p0=[511, 20, 1000])
     fwhm_ratio = 2*np.sqrt(2*np.log(2))
     energy_resolution = (100*popt[1]*fwhm_ratio)/511.0
+    lin_fig_name = localdirout + filename + "_Energie_LD.png"
 
     plt.figure(figsize=(8, 6))
     plt.hist(second_collection.kev_energy, bins=55)
@@ -122,8 +124,8 @@ def main_loop():
     plt.text(50, top/2,
              u"Résolution en \n énergie : {0:.2f} %".format(energy_resolution), wrap=True)
     plt.tick_params(direction='in')
-    plt.savefig(localdirout+"/Energie_BASE_S100_OB3_lineaire_discrimination400keV", format="png", bbox="tight")
-    plt.show()
+    plt.savefig(lin_fig_name, format="svg", bbox="tight")
+    #plt.show()
 
     #time_coincidence_collection = CCoincidenceCollection(event_collection)
 

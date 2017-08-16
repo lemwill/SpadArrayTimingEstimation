@@ -1,4 +1,4 @@
-# ! /usr/bin/env python
+#!/usr/bin/env python
 # coding=utf-8
 
 import numpy as np
@@ -63,7 +63,7 @@ def display_energy_spectrum(event_collection, histogram_bins_qty = 256, display=
     photopeak_mean, photopeak_sigma, photopeak_amplitude = fit_photopeak(event_collection.qty_spad_triggered, bins = histogram_bins_qty)
 
     x = np.linspace(0, 2000, 2000)
-    plt.figure()
+    plt.figure(figsize=(8, 6))
     plt.hist(event_collection.qty_spad_triggered, bins=histogram_bins_qty)
     plt.plot(x, photopeak_amplitude*mlab.normpdf(x,photopeak_mean,photopeak_sigma))
     plt.xlabel(u'Nombre de photons détectés')
