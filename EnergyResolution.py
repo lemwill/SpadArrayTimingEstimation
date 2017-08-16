@@ -83,15 +83,15 @@ def main_loop():
             'size': 16}
     matplotlib.rc('font', **font)
 
-    localdirin = os.getenv('PARALLEL_SCRATCH_MP2_WIPE_ON_AUGUST_2017'+'/Analysis/source/', '/home/cora2406/DalsaSimThese/G4')
+    localdirin = os.getenv('PARALLEL_SCRATCH_MP2_WIPE_ON_AUGUST_2017', '/home/cora2406/DalsaSimThese/G4')
     localdirout = os.getenv('LSCRATCH', '/home/cora2406/DalsaSimThese/Results')
-    root_event_file = localdirin+'/'+args.EventFile
+    root_event_file = localdirin+'/Analysis/source/'+args.EventFile
 
     event_count = args.iter
     lower_kev = 400
     higher_kev = 700
 
-    filename = args.EventFile[0:-5]
+    filename = "/"+args.EventFile[0:-5]
 
     event_collection, coincidence_collection = collection_procedure(root_event_file, event_count)
     second_collection = copy.deepcopy(event_collection)
