@@ -83,7 +83,7 @@ def main_loop():
             'size': 16}
     matplotlib.rc('font', **font)
 
-    localdirin = os.getenv('PARALLEL_SCRATCH_MP2_WIPE_ON_AUGUST_2017', '/home/cora2406/DalsaSimThese/G4')
+    localdirin = os.getenv('PARALLEL_SCRATCH_MP2_WIPE_ON_AUGUST_2017'+'/Analysis/source/', '/home/cora2406/DalsaSimThese/G4')
     localdirout = os.getenv('LSCRATCH', '/home/cora2406/DalsaSimThese/Results')
     root_event_file = localdirin+'/'+args.EventFile
 
@@ -91,7 +91,7 @@ def main_loop():
     lower_kev = 400
     higher_kev = 700
 
-    filename = "/"+args.EventFile[0:-5]
+    filename = args.EventFile[0:-5]
 
     event_collection, coincidence_collection = collection_procedure(root_event_file, event_count)
     second_collection = copy.deepcopy(event_collection)
@@ -124,7 +124,7 @@ def main_loop():
     plt.text(50, top/2,
              u"Résolution en \n énergie : {0:.2f} %".format(energy_resolution), wrap=True)
     plt.tick_params(direction='in')
-    plt.savefig(lin_fig_name, format="svg", bbox="tight")
+    plt.savefig(lin_fig_name, format="png", bbox="tight")
     #plt.show()
 
     #time_coincidence_collection = CCoincidenceCollection(event_collection)
