@@ -65,3 +65,6 @@ target/
 #Output Files
 spad_fired_single_event.txt
 *.npy
+
+#Mammouth stage
+mammouth/
