@@ -37,3 +37,8 @@ class CTimingEstimationResult():
 
     def fetch_fwhm_time_resolution(self):
         return np.std(self.__interaction_timestamps_estimated, dtype=np.float64)*2*np.sqrt(2*np.log(2))
+
+    def display_timing_spectrum(self, qty_bins=128):
+        plt.figure()
+        plt.hist(self.__interaction_timestamps_estimated, bins=qty_bins)
+        plt.show()

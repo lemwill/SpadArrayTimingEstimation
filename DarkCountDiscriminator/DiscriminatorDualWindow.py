@@ -11,7 +11,7 @@ def DiscriminatorDualWindow(event_collection, min_photons=np.NaN):
 
     for events in xrange(event_collection.timestamps.shape[0]):
         for photons in xrange(event_collection.timestamps.shape[1]-5):
-            if ((event_collection.timestamps[events, photons+5] - event_collection.timestamps[events, photons]) > 1200):
+            if ((event_collection.timestamps[events, photons+5] - event_collection.timestamps[events, photons]) > 800):
                 event_collection.timestamps[events, photons] = np.ma.masked
             else:
                 break

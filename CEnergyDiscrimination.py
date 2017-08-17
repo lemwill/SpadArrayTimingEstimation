@@ -162,7 +162,7 @@ def discriminate_by_linear_energy(event_collection, low_threshold_kev, high_thre
     event_collection.delete_events(keep_list)
 
     print("Events with under {0} kev or over {1} kev have been removed. There are {2} events left".format(low_threshold_kev, high_threshold_kev, event_collection.qty_of_events))
-    print("Energy resolution is {0:.2f} %".format(event_collection.get_energy_resolution()))
+    print("Energy resolution is {0:.2f} %".format(event_collection.get_linear_energy_resolution()))
 
     return
 

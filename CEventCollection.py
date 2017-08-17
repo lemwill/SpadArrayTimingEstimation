@@ -222,8 +222,12 @@ class CEventCollection:
 
         self.remove_masked_photons()
 
-
-
+    def sort_timestamps(self):
+        index = np.argsort(self.timestamps, axis=1)
+        self.__timestamps = self.timestamps[index]
+        self.__trigger_type = self.trigger_type[index]
+        self.__pixel_x_coord = self.pixel_x_coord[index]
+        self.__pixel_y_coord = self.pixel_y_coord[index]
 
     def __init__(self, event_id, timestamps, qty_spad_triggered, trigger_type, pixel_x_coord, pixel_y_coord, incident_photons):
 
@@ -239,3 +243,4 @@ class CEventCollection:
         self._energy_resolution = 0
         self._linear_energy_resolution = 0
         print("Event collection created with: {0} events.".format(self.qty_of_events) )
+
