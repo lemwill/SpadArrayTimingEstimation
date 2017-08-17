@@ -38,15 +38,16 @@ def fit_photopeak(energy_spectrum, bins = 256):
         GaussUpperBound = bins-1
 
     approx_photopeak_on_x_axis = energy_spectrum_x_axis[approx_photopeak_bin[0][0]]
+    approx_sigma = energy_spectrum_x_axis[approx_photopeak_bin[0][0]] - energy_spectrum_x_axis[GaussLowerBound]
 
     # Curve fit on 511 keV peak
     try:
         popt, pcov = curve_fit(gaussian_fit, energy_spectrum_x_axis[GaussLowerBound:GaussUpperBound], energy_spectrum_y_axis[GaussLowerBound:GaussUpperBound],
-                           p0=(approx_photopeak_on_x_axis, 50, np.max(energy_spectrum_y_axis)))
+                           p0=(approx_photopeak_on_x_axis, approx_sigma, np.max(energy_spectrum_y_axis)))
     except RuntimeError:
         popt, pcov = curve_fit(gaussian_fit, energy_spectrum_x_axis[GaussLowerBound:GaussUpperBound],
                                energy_spectrum_y_axis[GaussLowerBound:GaussUpperBound],
-                               p0=(approx_photopeak_on_x_axis, 50, np.max(energy_spectrum_y_axis)), ftol=1e-5)
+                               p0=(approx_photopeak_on_x_axis, approx_sigma, np.max(energy_spectrum_y_axis)), ftol=1e-6)
 
     if(popt[0] < 0):
         raise ValueError('Energy fit failed, peak position cannot be negative')
