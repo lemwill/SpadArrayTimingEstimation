@@ -27,11 +27,11 @@ def fit_photopeak(energy_spectrum, bins = 256):
     energy_spectrum_y_axis, energy_spectrum_x_axis = np.histogram(energy_spectrum, bins=bins)
 
     # Find the approx position of the photopeak
-    approx_photopeak_bin = np.where(energy_spectrum_y_axis[bins/2::] == np.amax(energy_spectrum_y_axis[bins/2::]))
-    approx_photopeak_bin[0][0] += bins/2
+    approx_photopeak_bin = np.where(energy_spectrum_y_axis[bins/4::] == np.amax(energy_spectrum_y_axis[bins/4::]))
+    approx_photopeak_bin[0][0] += bins/4
 
     ## Set region around the photopeak
-    GaussLowerBound = int(approx_photopeak_bin[0][0]*0.80)
+    GaussLowerBound = int(approx_photopeak_bin[0][0]*0.90)
     GaussUpperBound = int(approx_photopeak_bin[0][0]*1.20)
 
     if(GaussUpperBound > bins):
@@ -59,18 +59,18 @@ def fit_photopeak(energy_spectrum, bins = 256):
     return photopeak_mean, photopeak_sigma, photopeak_amplitude
 
 
-def display_energy_spectrum(event_collection, histogram_bins_qty = 256, display=True, save_figure_name=""):
+def display_energy_spectrum(event_collection, histogram_bins_qty=256, display=True, save_figure_name=""):
 
     photopeak_mean, photopeak_sigma, photopeak_amplitude = fit_photopeak(event_collection.qty_spad_triggered, bins = histogram_bins_qty)
 
-    x = np.linspace(0, 2000, 2000)
+    x = np.linspace(0, np.max(event_collection.qty_spad_triggered), 2000)
     plt.figure(figsize=(8, 6))
     plt.hist(event_collection.qty_spad_triggered, bins=histogram_bins_qty)
     plt.plot(x, photopeak_amplitude*mlab.normpdf(x,photopeak_mean,photopeak_sigma))
     plt.xlabel(u'Nombre de photons détectés')
     plt.ylabel(u"Nombre d'évènements")
     top = max(photopeak_amplitude*mlab.normpdf(x,photopeak_mean,photopeak_sigma))
-    plt.text(50, top/2,
+    plt.text(50, 3*top/4,
              u"Résolution en \n énergie : {0:.2f} %".format(event_collection.get_energy_resolution()))
     plt.tick_params(direction='in')
     if display:
@@ -94,8 +94,13 @@ def get_linear_energy_spectrum(event_collection, histogram_bins_qty = 128, peak_
     photopeak_mean, photopeak_sigma, photopeak_amplitude = fit_photopeak(linear_energy, bins = histogram_bins_qty)
     k = peak_energy/photopeak_mean
     event_collection.set_kev_energy(linear_energy*k)
-    kev_peak_sigma = k*photopeak_sigma
-    kev_peak_amplitude = k*photopeak_amplitude
+
+    keep_mask = (linear_energy*k <= 800)
+
+    # Delete the events too much energy for better fit
+    event_collection.delete_events(keep_mask)
+
+    photopeak_mean, kev_peak_sigma, kev_peak_amplitude = fit_photopeak(event_collection.kev_energy, bins=histogram_bins_qty)
 
     fwhm_ratio = 2*np.sqrt(2*np.log(2))
 
@@ -116,7 +121,7 @@ def display_linear_energy_spectrum(event_collection, histogram_bins_qty=128,
     plt.xlabel(u'Énergie (keV)')
     plt.ylabel(u"Nombre d'évènements")
     top = max(kev_peak_amplitude*mlab.normpdf(x,peak_energy, kev_peak_sigma))
-    plt.text(50, 2*top/3, u"Résolution en \n énergie : {0:.2f} %".format(event_collection.get_linear_energy_resolution()), wrap=True)
+    plt.text(50, 3*top/4, u"Résolution en \n énergie : {0:.2f} %".format(event_collection.get_linear_energy_resolution()), wrap=True)
     plt.tick_params(direction='in')
     if display:
         plt.show()

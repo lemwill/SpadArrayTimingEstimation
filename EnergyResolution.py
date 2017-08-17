@@ -99,19 +99,19 @@ def main_loop():
     event_collection, coincidence_collection = collection_procedure(root_event_file, event_count)
     second_collection = copy.deepcopy(event_collection)
     non_lin_fig_name = localdirout + filename + "_Energie_NLC.png"
-    CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=100,
+    CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=128,
                                                   display=False, save_figure_name=non_lin_fig_name)
     CEnergyDiscrimination.discriminate_by_energy(event_collection, lower_kev, higher_kev)
     non_lin_fig_name = localdirout + filename + "_Energie_NLD.png"
-    CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=40,
+    CEnergyDiscrimination.display_energy_spectrum(event_collection, histogram_bins_qty=55,
                                                   display=False, save_figure_name=non_lin_fig_name)
 
     lin_fig_name = localdirout + filename + "_Energie_LC.png"
-    CEnergyDiscrimination.display_linear_energy_spectrum(second_collection, histogram_bins_qty=80,
+    CEnergyDiscrimination.display_linear_energy_spectrum(second_collection, histogram_bins_qty=128,
                                                          display=False, save_figure_name=lin_fig_name)
     CEnergyDiscrimination.discriminate_by_linear_energy(second_collection, lower_kev, higher_kev)
 
-    energy_spectrum_y_axis, energy_spectrum_x_axis = np.histogram(second_collection.kev_energy, bins=30)
+    energy_spectrum_y_axis, energy_spectrum_x_axis = np.histogram(second_collection.kev_energy, bins=55)
     popt, pcov = curve_fit(gaussian, energy_spectrum_x_axis[1:], energy_spectrum_y_axis, p0=[511, 20, 1000])
     fwhm_ratio = 2*np.sqrt(2*np.log(2))
     energy_resolution = (100*popt[1]*fwhm_ratio)/511.0
@@ -124,7 +124,7 @@ def main_loop():
     plt.xlabel(u'Énergie (keV)')
     plt.ylabel(u"Nombre d'évènements")
     top = max(popt[2]*mlab.normpdf(x, popt[0], popt[1]))
-    plt.text(50, top/2,
+    plt.text(50, 3*top/4,
              u"Résolution en \n énergie : {0:.2f} %".format(energy_resolution), wrap=True)
     plt.tick_params(direction='in')
     plt.savefig(lin_fig_name, format="png", bbox="tight")
