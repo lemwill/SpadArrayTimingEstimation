@@ -1,6 +1,13 @@
 import numpy as np
 import statistics
+from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
+
+def gaussian_fit(x, mean, variance, A):
+    gain = 1 / (variance * np.sqrt(2*np.pi))
+    exponant = np.power((x - mean), 2) / (2 * np.power(variance, 2))
+    return A * gain * np.exp(-1*exponant)
 
 class CTimingEstimationResult():
 
@@ -35,8 +42,33 @@ class CTimingEstimationResult():
     def fetch_std_time_resolution(self):
         return np.std(self.__interaction_timestamps_estimated, dtype=np.float64)
 
-    def fetch_fwhm_time_resolution(self):
-        return np.std(self.__interaction_timestamps_estimated, dtype=np.float64)*2*np.sqrt(2*np.log(2))
+    def fetch_fwhm_time_resolution(self, qty_bins=128, max_width=2000, display=False):
+
+        timestamps = self.__interaction_timestamps_estimated
+        timestamps = timestamps[-max_width/2 < timestamps]
+        timestamps = timestamps[max_width / 2 > timestamps]
+
+        # Calculate the histogram
+        time_spectrum_y_axis, time_spectrum_x_axis = np.histogram(timestamps, bins=qty_bins)
+
+        p0 = [0, max_width / 3, np.max(time_spectrum_y_axis)]
+
+        popt, pcov = curve_fit(gaussian_fit, time_spectrum_x_axis[0:-1], time_spectrum_y_axis,
+                               p0=p0)
+
+        mean = popt[0]
+        sigma = popt[1]
+        amplitude = popt[2]
+
+        if display:
+            plt.figure()
+            plt.hist(timestamps, bins=qty_bins)
+            x = np.linspace(-max_width/2, max_width/2, 5*qty_bins)
+            plt.plot(x, amplitude*mlab.normpdf(x,mean,sigma))
+            plt.show()
+
+        return sigma*2*np.sqrt(2*np.log(2))
+
 
     def display_timing_spectrum(self, qty_bins=128):
         plt.figure()

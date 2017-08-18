@@ -4,7 +4,7 @@ __author__ = 'acorbeil'
 
 ## Utilities
 import matplotlib
-#matplotlib.use("agg")
+matplotlib.use("agg")
 from CCoincidenceCollection import CCoincidenceCollection
 import CEnergyDiscrimination
 from CTdc import CTdc
@@ -21,6 +21,8 @@ from scipy.optimize import curve_fit
 from Importer.ImporterROOT import ImporterRoot
 from DarkCountDiscriminator import DiscriminatorDualWindow
 ## Timing algorithms
+from TimingAlgorithms.CAlgorithmBlueDifferential import CAlgorithmBlueDifferential
+from TimingAlgorithms.CAlgorithmBlue import CAlgorithmBlue
 from TimingAlgorithms.CAlgorithmBlueExpectationMaximisation import CAlgorithmBlueExpectationMaximisation
 from TimingAlgorithms.CAlgorithmSinglePhoton import CAlgorithmSinglePhoton
 
@@ -50,7 +52,7 @@ def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.N
 
     # Filtering of unwanted photon types ------------------------------------
     event_collection.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=False,
-                                                  remove_crosstalk=False, remove_masked_photons=True)
+                                                  remove_crosstalk=True, remove_masked_photons=True)
 
     # First photon discriminator ---------------------------------------------
     # DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
@@ -132,7 +134,6 @@ def main_loop():
     for p in range(1, max_single_photon+1):
         algorithm = CAlgorithmSinglePhoton(photon_count=p)
         results = algorithm.evaluate_collection_timestamps(coincidence_collection)
-        results.display_timing_spectrum(qty_bins=1000)
         single_photon_time_resolution[p-1] = results.fetch_fwhm_time_resolution()
 
     print(single_photon_time_resolution)
@@ -142,15 +143,17 @@ def main_loop():
     for i, p in enumerate(BLUE_list):
         if p > second_collection.qty_of_photons:
             p = event_collection.qty_of_photons
-        algorithm = CAlgorithmBlueExpectationMaximisation(coincidence_collection, photon_count=p)
+        algorithm = CAlgorithmBlue(coincidence_collection, photon_count=p)
         results = algorithm.evaluate_collection_timestamps(coincidence_collection)
+        #CAlgorithmBlue.print_coefficients(algorithm)
         BLUE_time_resolution[i] = results.fetch_fwhm_time_resolution()
 
     print(BLUE_time_resolution)
 
-    out_filename = localdirout + filename + "_TimeResolution"
+    out_filename = localdirout + filename + "_TimeResolution_nonoise"
     np.savez(out_filename, SPTR=single_photon_time_resolution, BLUE_list=BLUE_list,
-             BLUE_TR=BLUE_time_resolution, NbEvents=second_collection.qty_of_events)
+             BLUE_TR=BLUE_time_resolution, NbEvents=second_collection.qty_of_events,
+             Linear_Energy_Resolution=second_collection.get_linear_energy_resolution())
 
 if __name__ == '__main__':
     main_loop()
