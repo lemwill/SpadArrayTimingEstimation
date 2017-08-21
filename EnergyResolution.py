@@ -106,6 +106,7 @@ def main_loop():
     fwhm_ratio = 2*np.sqrt(2*np.log(2))
     energy_resolution = (100*popt[1]*fwhm_ratio)/511.0
     lin_fig_name = localdirout + filename + "_Energie_LD.png"
+    second_collection.set_linear_energy_resolution(energy_resolution)
 
     plt.figure(figsize=(8, 6))
     plt.hist(second_collection.kev_energy, bins=55)
