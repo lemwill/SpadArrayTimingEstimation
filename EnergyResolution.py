@@ -63,6 +63,7 @@ def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.N
 parser = argparse.ArgumentParser()
 parser.add_argument('iter', type=int, help="Number of events to simulate. The numbered events MUST be available")
 parser.add_argument('-e', '--EventFile', type=str, default='example.root', help="Path and name of the Geant4 event file")
+parser.add_argument('-t', '--TDC', type=int, default=-1, help="TDC bin sizee")
 args = parser.parse_args()
 
 def main_loop():
@@ -126,7 +127,14 @@ def main_loop():
 
     # Apply TDC - Must be applied after making the coincidences because the
     # coincidence adds a random time offset to pairs of events
-    tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=5, tdc_jitter_std=2)
+    TDC_binsize = args.TDC
+    if TDC_binsize<0:
+        TDC_binsize = 5
+        TDC_jitter = 2
+    else:
+        filename = filename+"_TDC{0}ps".format(TDC_binsize)
+        TDC_jitter = TDC_binsize
+    tdc = CTdc(system_clock_period_ps=5000, tdc_bin_width_ps=TDC_binsize, tdc_jitter_std=TDC_jitter)
     tdc.get_sampled_timestamps(coincidence_collection.detector1)
     tdc.get_sampled_timestamps(coincidence_collection.detector2)
 
