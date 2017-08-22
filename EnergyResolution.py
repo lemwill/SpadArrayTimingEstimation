@@ -52,7 +52,7 @@ def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.N
 
     # Filtering of unwanted photon types ------------------------------------
     event_collection.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=False,
-                                                  remove_crosstalk=True, remove_masked_photons=True)
+                                                  remove_crosstalk=True, remove_masked_photons=False)
 
     # First photon discriminator ---------------------------------------------
     # DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
@@ -117,7 +117,7 @@ def main_loop():
     plt.ylabel(u"Nombre d'évènements")
     top = max(popt[2]*mlab.normpdf(x, popt[0], popt[1]))
     plt.text(50, 3*top/4,
-             u"Résolution en \n énergie : {0:.2f} %".format(energy_resolution), wrap=True)
+             u"Résolution en \n énergie : {0:.0f} %".format(energy_resolution), wrap=True)
     plt.tick_params(direction='in')
     plt.savefig(lin_fig_name, format="png", bbox="tight")
     #plt.show()

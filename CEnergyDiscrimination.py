@@ -71,7 +71,7 @@ def display_energy_spectrum(event_collection, histogram_bins_qty=256, display=Tr
     plt.ylabel(u"Nombre d'évènements")
     top = max(photopeak_amplitude*mlab.normpdf(x,photopeak_mean,photopeak_sigma))
     plt.text(50, 3*top/4,
-             u"Résolution en \n énergie : {0:.2f} %".format(event_collection.get_energy_resolution()))
+             u"Résolution en \n énergie : {0:.0f} %".format(event_collection.get_energy_resolution()))
     plt.tick_params(direction='in')
     if display:
         plt.show()
@@ -121,7 +121,7 @@ def display_linear_energy_spectrum(event_collection, histogram_bins_qty=128,
     plt.xlabel(u'Énergie (keV)')
     plt.ylabel(u"Nombre d'évènements")
     top = max(kev_peak_amplitude*mlab.normpdf(x,peak_energy, kev_peak_sigma))
-    plt.text(50, 3*top/4, u"Résolution en \n énergie : {0:.2f} %".format(event_collection.get_linear_energy_resolution()), wrap=True)
+    plt.text(50, 3*top/4, u"Résolution en \n énergie : {0:.0f} %".format(event_collection.get_linear_energy_resolution()), wrap=True)
     plt.tick_params(direction='in')
     if display:
         plt.show()
