@@ -51,8 +51,8 @@ def collection_procedure(filename, number_of_events=0, start=0, min_photons=np.N
                                                  high_threshold_kev=700)
 
     # Filtering of unwanted photon types ------------------------------------
-    event_collection.remove_unwanted_photon_types(remove_thermal_noise=False, remove_after_pulsing=False,
-                                                  remove_crosstalk=False, remove_masked_photons=True)
+    event_collection.remove_unwanted_photon_types(remove_thermal_noise=True, remove_after_pulsing=False,
+                                                  remove_crosstalk=True, remove_masked_photons=False)
 
     # First photon discriminator ---------------------------------------------
     # DiscriminatorMultiWindow.DiscriminatorMultiWindow(event_collection)
@@ -159,7 +159,7 @@ def main_loop():
 
     print(BLUE_time_resolution)
 
-    out_filename = localdirout + filename + "_TimeResolution_noise"
+    out_filename = localdirout + filename + "_TimeResolution_nonoise"
     np.savez(out_filename, SPTR=single_photon_time_resolution, BLUE_list=BLUE_list,
              BLUE_TR=BLUE_time_resolution, NbEvents=second_collection.qty_of_events,
              Linear_Energy_Resolution=second_collection.get_linear_energy_resolution())
