@@ -42,7 +42,7 @@ class CTimingEstimationResult():
     def fetch_std_time_resolution(self):
         return np.std(self.__interaction_timestamps_estimated, dtype=np.float64)
 
-    def fetch_fwhm_time_resolution(self, qty_bins=128, max_width=2000, display=False):
+    def fetch_fwhm_time_resolution(self, qty_bins=128, max_width=2000, min_sigma=3,  display=False):
 
         timestamps = self.__interaction_timestamps_estimated
         timestamps = timestamps[-max_width/2 < timestamps]
@@ -59,6 +59,18 @@ class CTimingEstimationResult():
         mean = popt[0]
         sigma = popt[1]
         amplitude = popt[2]
+
+        if sigma < min_sigma:
+            #Meant to catch underfits, which occur often with large bins
+            time_spectrum_y_axis, time_spectrum_x_axis = np.histogram(timestamps, bins=qty_bins/2)
+
+            p0 = [0, max_width, np.max(time_spectrum_y_axis)]
+
+            popt, pcov = curve_fit(gaussian_fit, time_spectrum_x_axis[0:-1], time_spectrum_y_axis,
+                                   p0=p0)
+            mean = popt[0]
+            sigma = popt[1]
+            amplitude = popt[2]
 
         if display:
             plt.figure()
