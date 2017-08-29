@@ -85,7 +85,7 @@ def main_loop():
         plt.figure(figsize=(8, 6))
         plt.plot(Steps, NbEvents[:, :].T, marker='o')
         plt.xlabel(u"Pas de la matrice de PAMP")
-        plt.ylabel(u"Nombre d'évènement")
+        plt.ylabel(u"Nombre d'évènements")
         plt.legend([u"Surtension de 2 V", u"Surtension de 3 V", u"Surtension de 4 V", u"Surtension de 5 V"])
 
         plt.figure(figsize=(8, 6))
@@ -121,6 +121,7 @@ def main_loop():
         ax.set_yticks(OB_voltages)
         ax.set_xlabel(u"\nPas de la matrice de PAMP")
         ax.set_zlabel(u"Résolution temporelle (ps LMH)\n", rotation='vertical')
+        print(TR_FP[:, :, 0])
         print(TR_BLUE[:, :, rangBLUE32])
         plt.show()
 
@@ -129,6 +130,8 @@ def main_loop():
         TR_Prompt_BLUE = np.zeros((len(Steps), len(Prompt_number_photons), len(Prompt_time_dist), 5))
         Energy = np.zeros((len(Steps), len(Prompt_number_photons), len(Prompt_time_dist)))
         NbEvents = np.zeros((len(Steps), len(Prompt_number_photons), len(Prompt_time_dist)))
+        TR_FP = np.zeros((len(Steps), 5))
+        TR_BLUE = np.zeros((len(Steps), 5))
         for i, Step in enumerate(Steps):
             for j, photons in enumerate(Prompt_number_photons):
                 for k, time in enumerate(Prompt_time_dist):
@@ -142,19 +145,27 @@ def main_loop():
                         Energy[i, j, k] = data['Linear_Energy_Resolution']
                         NbEvents[i, j, k] = data['NbEvents']
 
+            filename = filepath + "LYSO1x1x10_TW_BASE_S{0}_OB3_TimeResolution_nonoise.npz".format(Step)
+            with np.load(filename) as data:
+                TR_FP[i, :] = data['SPTR']
+                TR_BLUE[i, :] = data['BLUE_TR']
+                #ticks_BLUE = data['BLUE_list']
+                #Energy[i] = data['Linear_Energy_Resolution']
+                #NbEvents[i] = data['NbEvents']
+
         f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=True, figsize=(10, 6))
         ax1.plot(Steps, Energy[:, 0, 0], marker='o')
         ax1.plot(Steps, Energy[:, 1, 0], marker='s')
         ax1.plot(Steps, Energy[:, 2, 0], marker='v')
-        ax1.text(25, 37, u"Temps de décroissance : 5 ps")
+        ax1.text(25, 30, u"Temps de décroissance : 5 ps")
         ax2.plot(Steps, Energy[:, 0, 1], marker='o')
         ax2.plot(Steps, Energy[:, 1, 1], marker='s')
         ax2.plot(Steps, Energy[:, 2, 1], marker='v')
-        ax2.text(25, 37, u"Temps de décroissance : 50 ps")
+        ax2.text(25, 30, u"Temps de décroissance : 50 ps")
         ax3.plot(Steps, Energy[:, 0, 2], marker='o')
         ax3.plot(Steps, Energy[:, 1, 2], marker='s')
         ax3.plot(Steps, Energy[:, 2, 2], marker='v')
-        ax3.text(25, 37, u"Temps de décroissance : 500 ps")
+        ax3.text(25, 30, u"Temps de décroissance : 500 ps")
         f.subplots_adjust(hspace=0)
         plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
         plt.xlabel(u"Pas de la matrice de PAMP")
@@ -178,7 +189,7 @@ def main_loop():
         f.subplots_adjust(hspace=0)
         plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
         plt.xlabel(u"Pas de la matrice de PAMP")
-        ax2.set_ylabel(u"Nombre d'évènement")
+        ax2.set_ylabel(u"Nombre d'évènements")
         plt.legend([u"25 PP", u"50 PP", u"100 PP"],
                    loc='center left', bbox_to_anchor=(1, 0.5))
 
@@ -212,49 +223,85 @@ def main_loop():
         ax.set_xlabel(u"\nNombre de photons prompts")
         ax.set_ylabel(u"\nTemps de décroissance (ps)")
         ax.set_zlabel(u"\nRésolution temporelle (ps LMH)\n", rotation='vertical')
-        print (TR_Prompt_BLUE[rangS50, :, :, rangBLUE16])
 
-        f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=True, figsize=(10, 6))
+
+        f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=True, figsize=(10, 10))
+        ax1.plot(Steps, TR_FP[:, 0], marker='x')
         ax1.plot(Steps, TR_Prompt_FP[:, 0, 0, 0], marker='o')
         ax1.plot(Steps, TR_Prompt_FP[:, 1, 0, 0], marker='s')
         ax1.plot(Steps, TR_Prompt_FP[:, 2, 0, 0], marker='v')
-        ax1.text(60, 170, u"Temps de décroissance : 5 ps")
+        ax1.text(60, 200, u"Temps de décroissance : 5 ps")
+        ax2.plot(Steps, TR_FP[:, 0], marker='x')
         ax2.plot(Steps, TR_Prompt_FP[:, 0, 1, 0], marker='o')
         ax2.plot(Steps, TR_Prompt_FP[:, 1, 1, 0], marker='s')
         ax2.plot(Steps, TR_Prompt_FP[:, 2, 1, 0], marker='v')
-        ax2.text(60, 170, u"Temps de décroissance : 50 ps")
+        ax2.text(60, 200, u"Temps de décroissance : 50 ps")
+        ax3.plot(Steps, TR_FP[:, 0], marker='x')
         ax3.plot(Steps, TR_Prompt_FP[:, 0, 2, 0], marker='o')
         ax3.plot(Steps, TR_Prompt_FP[:, 1, 2, 0], marker='s')
         ax3.plot(Steps, TR_Prompt_FP[:, 2, 2, 0], marker='v')
-        ax3.text(60, 170, u"Temps de décroissance : 500 ps")
+        ax3.text(60, 200, u"Temps de décroissance : 500 ps")
         f.subplots_adjust(hspace=0.1)
         plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
         plt.xlabel(u"Pas de la matrice de PAMP")
         ax2.set_ylabel(u"Résolution temporelle (ps LMH)")
-        plt.legend([u"25 PP", u"50 PP", u"100 PP"],
+        plt.legend([u"0 PP", u"25 PP", u"50 PP", u"100 PP"],
                    loc='center left', bbox_to_anchor=(1, 0.5))
 
-        f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=True, figsize=(10, 6))
+        f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=True, figsize=(10, 10))
+        ax1.plot(Steps, TR_BLUE[:, rangBLUE16], marker='x')
         ax1.plot(Steps, TR_Prompt_BLUE[:, 0, 0, rangBLUE16], marker='o')
         ax1.plot(Steps, TR_Prompt_BLUE[:, 1, 0, rangBLUE16], marker='s')
         ax1.plot(Steps, TR_Prompt_BLUE[:, 2, 0, rangBLUE16], marker='v')
-        ax1.text(60, 130, u"Temps de décroissance : 5 ps")
+        ax1.text(60, 150, u"Temps de décroissance : 5 ps")
+        ax2.plot(Steps, TR_BLUE[:, rangBLUE16], marker='x')
         ax2.plot(Steps, TR_Prompt_BLUE[:, 0, 1, rangBLUE16], marker='o')
         ax2.plot(Steps, TR_Prompt_BLUE[:, 1, 1, rangBLUE16], marker='s')
         ax2.plot(Steps, TR_Prompt_BLUE[:, 2, 1, rangBLUE16], marker='v')
-        ax2.text(60, 130, u"Temps de décroissance : 50 ps")
+        ax2.text(60, 150, u"Temps de décroissance : 50 ps")
+        ax3.plot(Steps, TR_BLUE[:, rangBLUE16], marker='x')
         ax3.plot(Steps, TR_Prompt_BLUE[:, 0, 2, rangBLUE16], marker='o')
         ax3.plot(Steps, TR_Prompt_BLUE[:, 1, 2, rangBLUE16], marker='s')
         ax3.plot(Steps, TR_Prompt_BLUE[:, 2, 2, rangBLUE16], marker='v')
-        ax3.text(60, 130, u"Temps de décroissance : 500 ps")
+        ax3.text(60, 150, u"Temps de décroissance : 500 ps")
         f.subplots_adjust(hspace=0.1)
         plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
         plt.xlabel(u"Pas de la matrice de PAMP")
         ax2.set_ylabel(u"Résolution temporelle (ps LMH)")
-        plt.legend([u"25 PP", u"50 PP", u"100 PP"],
+        plt.legend([u"0 PP", u"25 PP", u"50 PP", u"100 PP"],
                    loc='center left', bbox_to_anchor=(1, 0.5))
 
+        increase_FP = np.zeros((len(Steps), len(Prompt_number_photons)+1, len(Prompt_time_dist)))
+        increase_BLUE = np.zeros((len(Steps), len(Prompt_number_photons) + 1, len(Prompt_time_dist)))
 
+        for i in range(3):
+            for k in range(3):
+                increase_FP[:, i+1, k] = TR_Prompt_FP[:, i, k, 0] - TR_FP[:, 0]
+                increase_BLUE[:, i + 1, k] = TR_Prompt_BLUE[:, i, k, rangBLUE16] - TR_FP[:, rangBLUE16]
+            print("Temps de décroissance : {0}".format(Prompt_time_dist[i]))
+            print("Premier photon")
+            print (TR_Prompt_FP[:, :, i, 0])
+            print("BLUE16")
+            print (TR_Prompt_BLUE[:, :, i, rangBLUE16])
+
+        xaxis = [0, 25, 50, 100]
+        plt.figure(figsize=(8, 6))
+        plt.plot(xaxis, increase_FP[rangS50, :, 0], marker='o')
+        plt.plot(xaxis, increase_FP[rangS50, :, 1], marker='s')
+        plt.plot(xaxis, increase_FP[rangS50, :, 2], marker='v')
+        plt.xlabel(u"Nombre de photons prompts")
+        plt.xticks([0, 25, 50, 100])
+        plt.ylabel(u"Réduction de la RTC (ps)")
+        plt.legend([u"Décroissance 5 ps", u"Décroissance 50 ps", u"Décroissance 500 ps"])
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(xaxis, increase_BLUE[rangS50, :, 0], marker='o')
+        plt.plot(xaxis, increase_BLUE[rangS50, :, 1], marker='s')
+        plt.plot(xaxis, increase_BLUE[rangS50, :, 2], marker='v')
+        plt.xlabel(u"Nombre de photons prompts")
+        plt.xticks([0, 25, 50, 100])
+        plt.ylabel(u"Réduction de la RTC (ps)")
+        plt.legend([u"Décroissance 5 ps", u"Décroissance 50 ps", u"Décroissance 500 ps"])
         plt.show()
 
 
