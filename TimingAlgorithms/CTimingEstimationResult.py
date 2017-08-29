@@ -42,7 +42,7 @@ class CTimingEstimationResult():
     def fetch_std_time_resolution(self):
         return np.std(self.__interaction_timestamps_estimated, dtype=np.float64)
 
-    def fetch_fwhm_time_resolution(self, qty_bins=128, max_width=2000, min_sigma=3,  display=False):
+    def fetch_fwhm_time_resolution(self, qty_bins=128, max_width=2000, min_sigma=5,  display=False):
 
         timestamps = self.__interaction_timestamps_estimated
         timestamps = timestamps[-max_width/2 < timestamps]
@@ -51,7 +51,7 @@ class CTimingEstimationResult():
         # Calculate the histogram
         time_spectrum_y_axis, time_spectrum_x_axis = np.histogram(timestamps, bins=qty_bins)
 
-        p0 = [0, max_width / 3, np.max(time_spectrum_y_axis)]
+        p0 = [0, max_width, np.max(time_spectrum_y_axis)]
 
         popt, pcov = curve_fit(gaussian_fit, time_spectrum_x_axis[0:-1], time_spectrum_y_axis,
                                p0=p0)
