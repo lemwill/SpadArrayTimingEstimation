@@ -1,6 +1,8 @@
 import numpy as np
 import os
 
+PIXEL_PER_COLUMN = 21
+
 class CEventCollection:
     type_invalid = 0
     type_photon = 1
@@ -210,13 +212,12 @@ class CEventCollection:
     def apply_tdc_sharing(self, pixels_per_tdc_x = 1, pixels_per_tdc_y=1):
 
         print("\n#### Sharing TDCs ####")
-        address = (self.pixel_x_coord+1)/pixels_per_tdc_x*21 + (self.pixel_y_coord+1)/pixels_per_tdc_y
+        address = (self.pixel_x_coord/pixels_per_tdc_x).astype(int) * int(PIXEL_PER_COLUMN/pixels_per_tdc_x) + (self.pixel_y_coord/pixels_per_tdc_y).astype(int)
 
         m = np.zeros_like(address, dtype=bool)
 
         for events in xrange(self.timestamps.shape[0]):
             m[events, np.unique(address[events,:], return_index=True)[1]] = True
-
 
         self.__timestamps = np.ma.masked_where(m==False, self.timestamps)
 
